@@ -41,7 +41,24 @@ COUNTER_HINTS = ("_ct", "count", "seq", "time_since", "sec_in", "time_stamp",
                  "sub_seconds", "packet_length", "process_id")
 
 
-def health_channels(df: pd.DataFrame, min_unique: int = 8) -> list[str]:
+def complete_frames(df: pd.DataFrame, channels: list[str]) -> pd.DataFrame:
+    """Keep only the frames that actually carry the selected channels.
+
+    A satellite transmits several frame types and each carries a different
+    block of fields, so a field is absent - not zero - in frames of another
+    type.  On COSMO the ADCS block appears in 37% of frames, leaving the rest
+    NaN for those columns.  Interpolating across that gap would invent
+    telemetry, and leaving the NaNs in makes the training loss NaN, so the
+    honest move is to restrict the series to frames of the type that carries
+    these channels and renumber them.
+    """
+    keep = df.dropna(subset=channels).reset_index(drop=True)
+    keep[FRAME_INDEX] = np.arange(len(keep))
+    return keep
+
+
+def health_channels(df: pd.DataFrame, min_unique: int = 8,
+                    min_coverage: float = 0.25) -> list[str]:
     """Channels that plausibly reflect spacecraft health.
 
     Two things are excluded. Monotonic counters (uptime, sequence numbers,
@@ -53,6 +70,8 @@ def health_channels(df: pd.DataFrame, min_unique: int = 8) -> list[str]:
     for c in usable_channels(df, min_unique=min_unique):
         if c in METADATA_FIELDS or any(h in c.lower() for h in COUNTER_HINTS):
             continue
+        if df[c].notna().mean() < min_coverage:
+            continue          # present in too few frames to model
         v = df[c].to_numpy(dtype=float)
         diffs = np.diff(v)
         if len(diffs) and np.all(diffs >= 0) and np.count_nonzero(diffs) > len(diffs) * 0.5:
@@ -96,7 +115,7 @@ def train_live(df: pd.DataFrame, channels: list[str], name: str,
         state, scal, vl = train_channel(values, cmds[:cut], epochs=epochs,
                                         window=window, stride=LIVE_STRIDE)
         torch.save({"channel": ch, "model": state, "scaler": scal,
-                    "window": window}, out_dir / f"{ch}.pt")
+                    "window": window, "n_cmd": 0}, out_dir / f"{ch}.pt")
         meta["channels"][ch] = {"val_mse": vl}
         if verbose:
             print(f"  [{i:2d}/{len(channels)}] {ch:34s} val MSE {vl:.5f}",
@@ -151,7 +170,10 @@ if __name__ == "__main__":
     # Prefer the most variable channels: a near-flat signal contributes little
     # and each extra channel is another model to train.
     chans = sorted(chans, key=lambda c: df[c].std(), reverse=True)[:args.max_channels]
-    print(f"{name}: {len(df)} frames, {len(chans)} health channels selected")
+    raw_frames = len(df)
+    df = complete_frames(df, chans)
+    print(f"{name}: {raw_frames} frames decoded, {len(df)} carry the selected "
+          f"channels, {len(chans)} health channels")
     for c in chans:
         print(f"   {c:38s} std={df[c].std():.4g}")
 

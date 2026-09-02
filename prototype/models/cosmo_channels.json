@@ -1,0 +1,26 @@
+{
+  "satellite": "COSMO",
+  "window": 24,
+  "frames": 198,
+  "train_frames": 118,
+  "channels": {
+    "bcn_adcs_gps_pos_ecef_2": {
+      "val_mse": 0.10581880062818527
+    },
+    "bcn_adcs_gps_pos_ecef_1": {
+      "val_mse": 3.30745792388916
+    },
+    "bcn_adcs_gps_pos_ecef_3": {
+      "val_mse": 0.0022889941465109587
+    },
+    "bcn_adcs_bod_rt_3": {
+      "val_mse": 1.0865203142166138
+    },
+    "bcn_adcs_att_resid_1": {
+      "val_mse": 0.9444430470466614
+    },
+    "bcn_adcs_bod_rt_2": {
+      "val_mse": 1.0694442987442017
+    }
+  }
+}

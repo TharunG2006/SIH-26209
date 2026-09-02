@@ -81,8 +81,10 @@ def train_channel(values: np.ndarray, cmds: np.ndarray, epochs: int = CH_EPOCHS,
     tr_dl = DataLoader(tr, batch_size=CH_BATCH, shuffle=True)
     va_dl = DataLoader(va, batch_size=CH_BATCH)
 
-    net = TelemetryForecaster(1, hidden=CH_HIDDEN, layers=CH_LAYERS,
-                              dropout=CH_DROPOUT)
+    # The command block is 24 wide on the NASA benchmark and empty on a live
+    # feed, so the input width is taken from the data rather than assumed.
+    net = TelemetryForecaster(1, n_cmd=cmds.shape[1], hidden=CH_HIDDEN,
+                              layers=CH_LAYERS, dropout=CH_DROPOUT)
     opt = torch.optim.Adam(net.parameters(), lr=LR)
     lossf = torch.nn.MSELoss()
 
@@ -111,6 +113,12 @@ def train_channel(values: np.ndarray, cmds: np.ndarray, epochs: int = CH_EPOCHS,
             if bad >= PATIENCE:
                 break
 
+    if best_state is None:
+        # Every epoch's validation loss was NaN or infinite - almost always NaN
+        # in the input rather than a training failure.
+        raise ValueError(
+            "training never produced a valid model; check the channel for NaN "
+            f"(input had {int(np.isnan(values).sum())} NaN of {values.size})")
     net.load_state_dict(best_state)
     return net.state_dict(), scaler.state_dict(), float(best)
 
@@ -138,7 +146,8 @@ def train_spacecraft_channels(name: str, epochs: int = CH_EPOCHS,
     done = 0
     with cf.ProcessPoolExecutor(max_workers=WORKERS) as pool:
         for ch, state, scal, vl in pool.map(_train_one, jobs):
-            torch.save({"channel": ch, "model": state, "scaler": scal},
+            torch.save({"channel": ch, "model": state, "scaler": scal,
+                        "window": WINDOW, "n_cmd": 24},
                        out_dir / f"{ch}.pt")
             meta["channels"][ch] = {"val_mse": vl}
             done += 1

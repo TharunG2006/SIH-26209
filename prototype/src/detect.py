@@ -130,7 +130,8 @@ def load_channel_detectors(spacecraft: str):
     nets, scalers, windows = {}, {}, {}
     for f in sorted(d.glob("*.pt")):
         ck = torch.load(f, weights_only=False)
-        net = TelemetryForecaster(1, hidden=ck.get("hidden", CH_HIDDEN),
+        net = TelemetryForecaster(1, n_cmd=ck.get("n_cmd", 24),
+                                  hidden=ck.get("hidden", CH_HIDDEN),
                                   layers=CH_LAYERS, dropout=CH_DROPOUT)
         net.load_state_dict(ck["model"])
         net.eval()
@@ -495,7 +496,7 @@ def detect(bundle: TelemetryBundle, z_min: float | None = None,
     if key in _FORECAST_CACHE:
         channels, y_true, y_pred, t, forecaster, lengths = _FORECAST_CACHE[key]
     else:
-        net, scaler, channels = load_detector(bundle.spacecraft)
+        channels = list(bundle.channels)
         ensemble = (load_channel_detectors(bundle.spacecraft)
                     if per_channel is not False else None)
         if ensemble is not None and set(channels) <= set(ensemble[0]):
@@ -504,6 +505,9 @@ def detect(bundle: TelemetryBundle, z_min: float | None = None,
                 nets, scalers, channels, bundle, windows=windows)
             forecaster = "per-channel ensemble (full length)"
         else:
+            # Only load the joint model when it is actually needed: a live
+            # satellite has per-channel models and no joint checkpoint at all.
+            net, scaler, channels = load_detector(bundle.spacecraft)
             y_true, y_pred, t = forecast(net, scaler, bundle.test, bundle.test_cmd)
             lengths = bundle.channel_lengths()
             forecaster = "joint multivariate"

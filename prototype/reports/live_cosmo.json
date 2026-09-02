@@ -1,0 +1,13 @@
+{
+  "satellite": "COSMO",
+  "frames": 198,
+  "channels": [
+    "bcn_adcs_gps_pos_ecef_2",
+    "bcn_adcs_gps_pos_ecef_1",
+    "bcn_adcs_gps_pos_ecef_3",
+    "bcn_adcs_bod_rt_3",
+    "bcn_adcs_att_resid_1",
+    "bcn_adcs_bod_rt_2"
+  ],
+  "incidents": []
+}
