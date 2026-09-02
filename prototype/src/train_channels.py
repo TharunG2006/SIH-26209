@@ -60,12 +60,21 @@ def _windows(values: np.ndarray, cmds: np.ndarray, window: int,
 
 
 def train_channel(values: np.ndarray, cmds: np.ndarray, epochs: int = CH_EPOCHS,
-                  val_frac: float = 0.15) -> tuple[dict, dict, float]:
+                  val_frac: float = 0.15, window: int | None = None,
+                  stride: int | None = None) -> tuple[dict, dict, float]:
+    """Train one channel's forecaster.
+
+    `window` is explicit so live feeds can use a shorter history than the
+    250-step benchmark setting: a SatNOGS pass yields a few thousand frames, and
+    a 250-step window would leave too few training samples to learn anything.
+    """
     torch.manual_seed(SEED)
     scaler = ChannelScaler().fit(values.reshape(-1, 1))
     scaled = scaler.transform(values.reshape(-1, 1)).ravel()
 
-    X, y = _windows(scaled, cmds, WINDOW, stride=CH_STRIDE)
+    window = WINDOW if window is None else window
+    stride = CH_STRIDE if stride is None else stride
+    X, y = _windows(scaled, cmds, window, stride=stride)
     cut = max(1, int(len(X) * (1 - val_frac)))
     tr = TensorDataset(torch.from_numpy(X[:cut]), torch.from_numpy(y[:cut]))
     va = TensorDataset(torch.from_numpy(X[cut:]), torch.from_numpy(y[cut:]))

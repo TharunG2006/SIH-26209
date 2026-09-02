@@ -127,19 +127,23 @@ def load_channel_detectors(spacecraft: str):
     d = MODEL_DIR / f"{spacecraft.lower()}_channels"
     if not d.is_dir():
         return None
-    nets, scalers = {}, {}
+    nets, scalers, windows = {}, {}, {}
     for f in sorted(d.glob("*.pt")):
         ck = torch.load(f, weights_only=False)
-        net = TelemetryForecaster(1, hidden=CH_HIDDEN, layers=CH_LAYERS,
-                                  dropout=CH_DROPOUT)
+        net = TelemetryForecaster(1, hidden=ck.get("hidden", CH_HIDDEN),
+                                  layers=CH_LAYERS, dropout=CH_DROPOUT)
         net.load_state_dict(ck["model"])
         net.eval()
         nets[ck["channel"]] = net
         scalers[ck["channel"]] = ChannelScaler().load_state_dict(ck["scaler"])
-    return (nets, scalers) if nets else None
+        # Inference must use the window the model was trained with, so it is
+        # read from the checkpoint rather than assumed to be the global.
+        windows[ck["channel"]] = ck.get("window", WINDOW)
+    return (nets, scalers, windows) if nets else None
 
 
-def forecast_per_channel(nets, scalers, channels, bundle, batch=256):
+def forecast_per_channel(nets, scalers, channels, bundle, batch=256,
+                         windows=None):
     """Forecast each channel with its own dedicated model, at its own length.
 
     Only the joint multivariate model needs the channels to share a timeline;
@@ -148,16 +152,22 @@ def forecast_per_channel(nets, scalers, channels, bundle, batch=256):
     NaN where a shorter channel has no data.  Row i is timestep WINDOW + i for
     every channel, since each channel's own series starts at its own zero.
     """
+    windows = windows or {}
+    win = {ch: windows.get(ch, WINDOW) for ch in channels}
     lengths = {ch: len(bundle.full_test[ch]) for ch in channels}
-    n = max(lengths.values()) - WINDOW
-    t = np.arange(n) + WINDOW
+    # Rows are offset by the largest window so every channel's row i refers to
+    # the same reading index regardless of how much history its model needs.
+    base = max(win.values())
+    n = max(lengths.values()) - base
+    t = np.arange(n) + base
     y_true = np.full((n, len(channels)), np.nan, dtype=np.float32)
     y_pred = np.full((n, len(channels)), np.nan, dtype=np.float32)
 
     for j, ch in enumerate(channels):
         values = bundle.full_test[ch]
         cmds = bundle.full_cmd[ch]
-        rows = len(values) - WINDOW
+        w = win[ch]
+        rows = len(values) - base
         if rows <= 0:
             continue
         scaler = scalers[ch]
@@ -168,15 +178,17 @@ def forecast_per_channel(nets, scalers, channels, bundle, batch=256):
         )
         # A strided view costs nothing; materialising every window up front
         # would allocate ~200 MB per channel, so only each batch is copied.
+        # Start far enough in that the first row lines up with `base`.
+        offset = base - w
         view = np.lib.stride_tricks.sliding_window_view(
-            feats, WINDOW, axis=0
-        )[:rows].transpose(0, 2, 1)
+            feats, w, axis=0
+        )[offset:offset + rows].transpose(0, 2, 1)
         preds = []
         with torch.no_grad():
             for i in range(0, rows, batch):
                 chunk = np.ascontiguousarray(view[i:i + batch])
                 preds.append(nets[ch](torch.from_numpy(chunk)).numpy())
-        y_true[:rows, j] = values[WINDOW:]
+        y_true[:rows, j] = values[base:base + rows]
         y_pred[:rows, j] = scaler.inverse(np.concatenate(preds)).ravel()
     return y_true, y_pred, t, lengths
 
@@ -487,9 +499,9 @@ def detect(bundle: TelemetryBundle, z_min: float | None = None,
         ensemble = (load_channel_detectors(bundle.spacecraft)
                     if per_channel is not False else None)
         if ensemble is not None and set(channels) <= set(ensemble[0]):
-            nets, scalers = ensemble
+            nets, scalers, windows = ensemble
             y_true, y_pred, t, lengths = forecast_per_channel(
-                nets, scalers, channels, bundle)
+                nets, scalers, channels, bundle, windows=windows)
             forecaster = "per-channel ensemble (full length)"
         else:
             y_true, y_pred, t = forecast(net, scaler, bundle.test, bundle.test_cmd)
