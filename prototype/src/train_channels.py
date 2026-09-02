@@ -125,10 +125,10 @@ def train_channel(values: np.ndarray, cmds: np.ndarray, epochs: int = CH_EPOCHS,
 
 def _train_one(job):
     """Worker entry point - must be importable at module level for Windows."""
-    channel, values, cmds, epochs = job
+    channel, values, cmds, epochs, window = job
     torch.set_num_threads(THREADS_PER_WORKER)
-    state, scal, vl = train_channel(values, cmds, epochs=epochs)
-    return channel, state, scal, vl
+    state, scal, vl = train_channel(values, cmds, epochs=epochs, window=window)
+    return channel, state, scal, vl, window
 
 
 def train_spacecraft_channels(name: str, epochs: int = CH_EPOCHS,
@@ -137,19 +137,27 @@ def train_spacecraft_channels(name: str, epochs: int = CH_EPOCHS,
     out_dir = MODEL_DIR / f"{name.lower()}_channels"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    jobs = [(ch, bundle.train[:, j], bundle.train_cmd, epochs)
-            for j, ch in enumerate(bundle.channels)]
+    # Train on each channel's own full series rather than the aligned matrix,
+    # which only covers the subset that shares a timeline. A channel with a
+    # short excerpt gets a proportionally shorter window so it still has enough
+    # training samples to learn from.
+    jobs = []
+    for ch in bundle.channels:
+        values = bundle.full_train[ch]
+        cmds = bundle.full_train_cmd[ch]
+        window = min(WINDOW, max(24, len(values) // 4))
+        jobs.append((ch, values, cmds, epochs, window))
 
     meta = {"spacecraft": name, "window": WINDOW, "hidden": CH_HIDDEN,
             "stride": CH_STRIDE, "workers": WORKERS, "channels": {}}
     t0 = time.time()
     done = 0
     with cf.ProcessPoolExecutor(max_workers=WORKERS) as pool:
-        for ch, state, scal, vl in pool.map(_train_one, jobs):
+        for ch, state, scal, vl, window in pool.map(_train_one, jobs):
             torch.save({"channel": ch, "model": state, "scaler": scal,
-                        "window": WINDOW, "n_cmd": 24},
+                        "window": window, "n_cmd": 24},
                        out_dir / f"{ch}.pt")
-            meta["channels"][ch] = {"val_mse": vl}
+            meta["channels"][ch] = {"val_mse": vl, "window": window}
             done += 1
             if verbose:
                 print(f"  [{done:2d}/{len(jobs)}] {ch:6s} val MSE {vl:.5f}",
