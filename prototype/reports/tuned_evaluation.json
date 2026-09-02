@@ -1,0 +1,58 @@
+{
+  "SMAP": {
+    "tuned_on": "MSL",
+    "reported_on": "SMAP",
+    "chosen_config": {
+      "prune_drop": 0.05,
+      "min_run": 5,
+      "z_grid_max": 6.0,
+      "threshold_signal": "err"
+    },
+    "config_score_on_tuning_mission": {
+      "precision": 0.7143,
+      "recall": 0.3846,
+      "f1": 0.5
+    },
+    "held_out_result": {
+      "precision": 0.8095,
+      "recall": 0.4324,
+      "f1": 0.5637,
+      "n_predicted": 21,
+      "n_labelled": 37,
+      "top1_channel_accuracy": 0.9,
+      "top3_channel_accuracy": 0.9,
+      "events_matched_to_labels": 10,
+      "forecast_mae": 0.16424205899238586,
+      "forecaster": "per-channel ensemble (full length)"
+    },
+    "n_configs_tried": 72
+  },
+  "MSL": {
+    "tuned_on": "SMAP",
+    "reported_on": "MSL",
+    "chosen_config": {
+      "prune_drop": 0.0,
+      "min_run": 5,
+      "z_grid_max": 10.0,
+      "threshold_signal": "err"
+    },
+    "config_score_on_tuning_mission": {
+      "precision": 0.8636,
+      "recall": 0.4865,
+      "f1": 0.6224
+    },
+    "held_out_result": {
+      "precision": 0.625,
+      "recall": 0.3846,
+      "f1": 0.4762,
+      "n_predicted": 16,
+      "n_labelled": 26,
+      "top1_channel_accuracy": 0.8571,
+      "top3_channel_accuracy": 0.8571,
+      "events_matched_to_labels": 7,
+      "forecast_mae": 0.7921653389930725,
+      "forecaster": "per-channel ensemble (full length)"
+    },
+    "n_configs_tried": 72
+  }
+}

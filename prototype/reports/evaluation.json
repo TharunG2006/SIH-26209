@@ -1,0 +1,25 @@
+{
+  "SMAP": {
+    "true_positives": 7,
+    "false_positives": 0,
+    "false_negatives": 30,
+    "n_predicted": 7,
+    "n_labelled": 37,
+    "precision": 1.0,
+    "recall": 0.1892,
+    "f1": 0.3182,
+    "incidents_shown_to_operator": 5,
+    "events_matched_to_labels": 5,
+    "top1_channel_accuracy": 1.0,
+    "top3_channel_accuracy": 1.0,
+    "forecast_mae": 0.1585594117641449,
+    "z_min": "dynamic",
+    "min_run": 5,
+    "telemanom_baseline": {
+      "precision": 0.855,
+      "recall": 0.855,
+      "f1": 0.855
+    },
+    "forecaster": "per-channel ensemble"
+  }
+}

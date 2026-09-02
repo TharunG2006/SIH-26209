@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "Optional operator-supplied channel names.",
+    "NASA anonymises the SMAP/MSL telemanom channels, so the shipped defaults",
+    "are the raw channel IDs. A real mission would drop its own mapping in as",
+    "config/channel_names.json and the dashboard picks it up automatically.",
+    "Anything left unmapped keeps its raw ID - nothing is invented."
+  ],
+  "channels": {
+    "E-6": "<your channel name here>",
+    "P-1": "<your channel name here>"
+  },
+  "subsystems": {
+    "E": "<your subsystem name here>",
+    "P": "<your subsystem name here>"
+  }
+}

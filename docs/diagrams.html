@@ -1,0 +1,246 @@
+<title>Anomaly System Diagrams</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg: #F6F8FC;
+  --surface: #FFFFFF;
+  --surface-2: #EBF0F8;
+  --border: #D6DEEA;
+  --text: #16202E;
+  --text-dim: #57647A;
+  --accent: #D9631F;
+  --accent-2: #1E7F76;
+  --font-display: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B1220;
+    --surface: #121B2E;
+    --surface-2: #172441;
+    --border: #28365A;
+    --text: #E7ECF5;
+    --text-dim: #93A2BE;
+    --accent: #FF9757;
+    --accent-2: #4FD1C5;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B1220;
+  --surface: #121B2E;
+  --surface-2: #172441;
+  --border: #28365A;
+  --text: #E7ECF5;
+  --text-dim: #93A2BE;
+  --accent: #FF9757;
+  --accent-2: #4FD1C5;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-display);
+  margin: 0;
+  padding: 0 20px 80px;
+}
+.wrap { max-width: 860px; margin: 0 auto; }
+
+header.page {
+  padding: 56px 0 32px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 40px;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+  margin: 0 0 10px;
+}
+h1 {
+  font-size: 32px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+.dek {
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 62ch;
+  margin: 0;
+}
+
+section.diagram {
+  margin: 0 0 64px;
+}
+.diagram-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.diagram-num {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+.diagram-intro {
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 68ch;
+  margin: 10px 0 20px;
+}
+
+figure {
+  margin: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.svg-scroll {
+  overflow-x: auto;
+}
+svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 640px;
+  margin: 0 auto;
+  color: var(--text);
+}
+figcaption {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  line-height: 1.6;
+}
+
+.node-title { font-family: var(--font-display); font-size: 13px; font-weight: 600; fill: var(--text); }
+.node-title-sm { font-family: var(--font-display); font-size: 12px; font-weight: 600; fill: var(--text); }
+.node-sub { font-family: var(--font-mono); font-size: 10px; fill: var(--text-dim); }
+.edge-label { font-family: var(--font-mono); font-size: 10.5px; fill: var(--text-dim); }
+.er-title { font-family: var(--font-display); font-size: 13px; font-weight: 700; fill: var(--text); }
+.er-field { font-family: var(--font-mono); font-size: 11px; fill: var(--text); }
+.er-field-key { font-family: var(--font-mono); font-size: 11px; font-weight: 600; fill: var(--accent-2); }
+.er-tag { font-family: var(--font-mono); font-size: 9.5px; fill: var(--text-dim); }
+.er-card { font-family: var(--font-mono); font-size: 11px; font-weight: 600; fill: var(--accent); }
+
+.legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 16px;
+}
+.legend span.dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: 6px;
+}
+
+footer.page {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+</style>
+
+<div class="wrap">
+  <header class="page">
+    <p class="eyebrow">SIH 2026 — PS 26209 · Technical Reference</p>
+    <h1>Explainable Satellite Anomaly Detection — System Diagrams</h1>
+    <p class="dek">Four diagrams covering the system: how components connect, how a single telemetry reading moves through detection to an operator alert, how the underlying data is modeled, and who uses the system for what.</p>
+  </header>
+
+  <section class="diagram">
+    <div class="diagram-head">
+      <span class="diagram-num">01</span>
+      <h2>System Architecture</h2>
+    </div>
+    <p class="diagram-intro">Two data sources feed one pipeline: a live telemetry stream for the demo, and labeled historical missions for training. The model and explainability engine sit in the middle; the alert manager is the only component that writes to storage and pushes to the operator.</p>
+    <figure>
+      <div class="svg-scroll">
+        <svg viewBox="0 0 640 840" role="img" aria-label="Pipeline from live and historical telemetry sources through ingestion, feature extraction, the LSTM anomaly model, an explainability engine, and an alert manager, which writes to the database and pushes to the operator dashboard."><defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+</marker>
+</defs><g><rect x="20" y="30" width="280" height="60" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="160.0" y="54.0" text-anchor="middle" class="node-title">SatNOGS Live Feed</text><text x="160.0" y="72.0" text-anchor="middle" class="node-sub">real-time demo telemetry</text></g><g><rect x="340" y="30" width="280" height="60" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="480.0" y="54.0" text-anchor="middle" class="node-title">NASA / ESA Datasets</text><text x="480.0" y="72.0" text-anchor="middle" class="node-sub">labeled historical telemetry</text></g><g><rect x="160" y="150" width="320" height="60" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="320.0" y="185.0" text-anchor="middle" class="node-title">Ingestion &amp; Normalization</text></g><g><rect x="160" y="270" width="320" height="60" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="320.0" y="294.0" text-anchor="middle" class="node-title">Feature Extraction</text><text x="320.0" y="312.0" text-anchor="middle" class="node-sub">sliding-window vectors</text></g><g><rect x="160" y="390" width="320" height="60" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="320.0" y="414.0" text-anchor="middle" class="node-title">LSTM Anomaly Model</text><text x="320.0" y="432.0" text-anchor="middle" class="node-sub">predicts expected values</text></g><g><rect x="160" y="510" width="320" height="60" rx="8" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/><text x="320.0" y="534.0" text-anchor="middle" class="node-title">Explainability Engine</text><text x="320.0" y="552.0" text-anchor="middle" class="node-sub">per-channel deviation scoring</text></g><g><rect x="160" y="630" width="320" height="60" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="320.0" y="665.0" text-anchor="middle" class="node-title">Alert Ranking &amp; Manager</text></g><g><rect x="60" y="750" width="220" height="60" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="170.0" y="774.0" text-anchor="middle" class="node-title">Telemetry / Anomaly Store</text><text x="170.0" y="792.0" text-anchor="middle" class="node-sub">(database)</text></g><g><rect x="360" y="750" width="220" height="60" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="470.0" y="785.0" text-anchor="middle" class="node-title">Operator Dashboard</text></g><line x1="160.0" y1="90" x2="280.0" y2="150" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="181.9" y="101.0" width="76.2" height="14" fill="var(--bg)" opacity="0.92"/><text x="220.0" y="112.0" text-anchor="middle" class="edge-label">raw packets</text><line x1="480.0" y1="90" x2="360.0" y2="150" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="372.6" y="101.0" width="94.8" height="14" fill="var(--bg)" opacity="0.92"/><text x="420.0" y="112.0" text-anchor="middle" class="edge-label">labeled series</text><line x1="320.0" y1="210" x2="320.0" y2="270" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="216.8" y="221.0" width="206.4" height="14" fill="var(--bg)" opacity="0.92"/><text x="320.0" y="232.0" text-anchor="middle" class="edge-label">normalized stream (all channels)</text><line x1="320.0" y1="330" x2="320.0" y2="390" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="269.5" y="341.0" width="101.0" height="14" fill="var(--bg)" opacity="0.92"/><text x="320.0" y="352.0" text-anchor="middle" class="edge-label">feature vectors</text><line x1="320.0" y1="450" x2="320.0" y2="510" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="254.0" y="461.0" width="132.0" height="14" fill="var(--bg)" opacity="0.92"/><text x="320.0" y="472.0" text-anchor="middle" class="edge-label">predicted vs. actual</text><line x1="320.0" y1="570" x2="320.0" y2="630" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="263.3" y="581.0" width="113.4" height="14" fill="var(--bg)" opacity="0.92"/><text x="320.0" y="592.0" text-anchor="middle" class="edge-label">ranked deviations</text><line x1="260.0" y1="690" x2="170.0" y2="750" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="170.7" y="701.0" width="88.60000000000001" height="14" fill="var(--bg)" opacity="0.92"/><text x="215.0" y="712.0" text-anchor="middle" class="edge-label">writes record</text><line x1="380.0" y1="690" x2="470.0" y2="750" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="383.8" y="701.0" width="82.4" height="14" fill="var(--bg)" opacity="0.92"/><text x="425.0" y="712.0" text-anchor="middle" class="edge-label">pushes alert</text><line x1="280" y1="780.0" x2="360" y2="780.0" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="275.7" y="761.0" width="88.60000000000001" height="14" fill="var(--bg)" opacity="0.92"/><text x="320.0" y="772.0" text-anchor="middle" class="edge-label">reads history</text></svg>
+      </div>
+      <figcaption>Live and historical telemetry both flow through the same ingestion path. The explainability engine (outlined) is what separates this from a plain anomaly-score system — it runs before ranking, not after.</figcaption>
+    </figure>
+  </section>
+
+  <section class="diagram">
+    <div class="diagram-head">
+      <span class="diagram-num">02</span>
+      <h2>Runtime Workflow</h2>
+    </div>
+    <p class="diagram-intro">What happens to one telemetry reading, in order. Most readings exit early at the threshold check — only the ones that actually deviate pay the cost of correlation and explanation.</p>
+    <figure>
+      <div class="svg-scroll">
+        <svg viewBox="0 0 760 830" role="img" aria-label="Runtime decision flow: each telemetry reading is preprocessed, scored by the model, and if its deviation crosses threshold, correlated across subsystems, explained, ranked and pushed as an alert to the operator; otherwise logged as normal."><defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+</marker>
+</defs><g><rect x="180" y="20" width="280" height="55" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="320.0" y="52.5" text-anchor="middle" class="node-title">New Telemetry Reading Arrives</text></g><g><rect x="180" y="110" width="280" height="55" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="320.0" y="142.5" text-anchor="middle" class="node-title">Preprocess &amp; Normalize</text></g><g><rect x="180" y="200" width="280" height="55" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="320.0" y="232.5" text-anchor="middle" class="node-title">LSTM Predicts Expected Value</text></g><polygon points="320,295.0 450.0,340 320,385.0 190.0,340" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/><text x="320" y="344" text-anchor="middle" class="node-title-sm">Deviation &gt; threshold?</text><g><rect x="180" y="470" width="280" height="55" rx="8" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/><text x="320.0" y="502.5" text-anchor="middle" class="node-title">Correlate Across Subsystems</text></g><g><rect x="180" y="560" width="280" height="55" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="320.0" y="592.5" text-anchor="middle" class="node-title">Generate Explanation (which channel, how much)</text></g><g><rect x="180" y="650" width="280" height="55" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="320.0" y="682.5" text-anchor="middle" class="node-title">Rank Severity &amp; Push Alert</text></g><g><rect x="180" y="740" width="280" height="55" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="320.0" y="772.5" text-anchor="middle" class="node-title">Operator Reviews &amp; Acknowledges</text></g><g><rect x="470" y="470" width="220" height="55" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="580.0" y="491.5" text-anchor="middle" class="node-title">Log as Normal</text><text x="580.0" y="509.5" text-anchor="middle" class="node-sub">no alert generated</text></g><line x1="320.0" y1="75" x2="320.0" y2="110" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><line x1="320.0" y1="165" x2="320.0" y2="200" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><line x1="320.0" y1="255" x2="320" y2="295.0" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><line x1="190.0" y1="340" x2="320.0" y2="470" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="241.7" y="386.0" width="26.6" height="14" fill="var(--bg)" opacity="0.92"/><text x="255.0" y="397.0" text-anchor="middle" class="edge-label">YES</text><line x1="450.0" y1="340" x2="580.0" y2="470" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><rect x="504.8" y="386.0" width="20.4" height="14" fill="var(--bg)" opacity="0.92"/><text x="515.0" y="397.0" text-anchor="middle" class="edge-label">NO</text><line x1="320.0" y1="525" x2="320.0" y2="560" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><line x1="320.0" y1="615" x2="320.0" y2="650" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><line x1="320.0" y1="705" x2="320.0" y2="740" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"/><path d="M 180 767.5 L 40 767.5 L 40 47.5 L 180 47.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-dasharray="5 4" marker-end="url(#arrow)"/><text x="34" y="380.0" text-anchor="end" class="edge-label" transform="rotate(-90 34 380.0)">periodic model retraining</text><path d="M 690 497.5 L 720 497.5 L 720 47.5 L 460 47.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-dasharray="5 4" marker-end="url(#arrow)"/></svg>
+      </div>
+      <figcaption>The dashed lines are feedback, not data flow: acknowledged alerts and logged-normal readings both eventually feed periodic model retraining.</figcaption>
+    </figure>
+  </section>
+
+  <section class="diagram">
+    <div class="diagram-head">
+      <span class="diagram-num">03</span>
+      <h2>Database Schema</h2>
+    </div>
+    <p class="diagram-intro">Seven tables. The design keeps <span style="font-family:var(--font-mono)">AnomalyContribution</span> as its own table rather than a column on <span style="font-family:var(--font-mono)">Anomaly</span>, because one anomaly can implicate several channels at once — that's the row-level data the explainability engine needs to point to.</p>
+    <figure>
+      <div class="svg-scroll">
+        <svg viewBox="0 0 700 540" role="img" aria-label="Entity relationship diagram: a Satellite has many Channels, each Channel has many TelemetryReadings; a Satellite has many Anomalies, each Anomaly has many AnomalyContribution rows linking back to Channels, and each Anomaly produces Alerts acknowledged by an Operator."><rect x="20" y="20" width="190" height="100" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><rect x="20" y="20" width="190" height="26" rx="6" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.25"/><rect x="20" y="34" width="190" height="12" fill="var(--surface-2)"/><text x="30" y="38" class="er-title">Satellite</text><text x="34" y="61" class="er-field-key">id</text><text x="200" y="61" text-anchor="end" class="er-tag">PK</text><text x="34" y="79" class="er-field">name</text><text x="34" y="97" class="er-field">norad_id</text><text x="34" y="115" class="er-field">launch_date</text><rect x="20" y="180" width="190" height="118" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><rect x="20" y="180" width="190" height="26" rx="6" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.25"/><rect x="20" y="194" width="190" height="12" fill="var(--surface-2)"/><text x="30" y="198" class="er-title">Channel</text><text x="34" y="221" class="er-field-key">id</text><text x="200" y="221" text-anchor="end" class="er-tag">PK</text><text x="34" y="239" class="er-field-key">satellite_id</text><text x="200" y="239" text-anchor="end" class="er-tag">FK</text><text x="34" y="257" class="er-field">subsystem</text><text x="34" y="275" class="er-field">name</text><text x="34" y="293" class="er-field">unit</text><rect x="20" y="380" width="190" height="100" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><rect x="20" y="380" width="190" height="26" rx="6" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.25"/><rect x="20" y="394" width="190" height="12" fill="var(--surface-2)"/><text x="30" y="398" class="er-title">TelemetryReading</text><text x="34" y="421" class="er-field-key">id</text><text x="200" y="421" text-anchor="end" class="er-tag">PK</text><text x="34" y="439" class="er-field-key">channel_id</text><text x="200" y="439" text-anchor="end" class="er-tag">FK</text><text x="34" y="457" class="er-field">timestamp</text><text x="34" y="475" class="er-field">value</text><rect x="470" y="20" width="210" height="118" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><rect x="470" y="20" width="210" height="26" rx="6" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.25"/><rect x="470" y="34" width="210" height="12" fill="var(--surface-2)"/><text x="480" y="38" class="er-title">Anomaly</text><text x="484" y="61" class="er-field-key">id</text><text x="670" y="61" text-anchor="end" class="er-tag">PK</text><text x="484" y="79" class="er-field-key">satellite_id</text><text x="670" y="79" text-anchor="end" class="er-tag">FK</text><text x="484" y="97" class="er-field">detected_at</text><text x="484" y="115" class="er-field">severity_score</text><text x="484" y="133" class="er-field">status</text><rect x="255" y="230" width="210" height="100" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><rect x="255" y="230" width="210" height="26" rx="6" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.25"/><rect x="255" y="244" width="210" height="12" fill="var(--surface-2)"/><text x="265" y="248" class="er-title">AnomalyContribution</text><text x="269" y="271" class="er-field-key">id</text><text x="455" y="271" text-anchor="end" class="er-tag">PK</text><text x="269" y="289" class="er-field-key">anomaly_id</text><text x="455" y="289" text-anchor="end" class="er-tag">FK</text><text x="269" y="307" class="er-field-key">channel_id</text><text x="455" y="307" text-anchor="end" class="er-tag">FK</text><text x="269" y="325" class="er-field">deviation_score</text><rect x="470" y="230" width="210" height="118" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><rect x="470" y="230" width="210" height="26" rx="6" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.25"/><rect x="470" y="244" width="210" height="12" fill="var(--surface-2)"/><text x="480" y="248" class="er-title">Alert</text><text x="484" y="271" class="er-field-key">id</text><text x="670" y="271" text-anchor="end" class="er-tag">PK</text><text x="484" y="289" class="er-field-key">anomaly_id</text><text x="670" y="289" text-anchor="end" class="er-tag">FK</text><text x="484" y="307" class="er-field">sent_at</text><text x="484" y="325" class="er-field-key">acknowledged_by</text><text x="670" y="325" text-anchor="end" class="er-tag">FK</text><text x="484" y="343" class="er-field">acknowledged_at</text><rect x="470" y="440" width="210" height="82" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><rect x="470" y="440" width="210" height="26" rx="6" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.25"/><rect x="470" y="454" width="210" height="12" fill="var(--surface-2)"/><text x="480" y="458" class="er-title">Operator</text><text x="484" y="481" class="er-field-key">id</text><text x="670" y="481" text-anchor="end" class="er-tag">PK</text><text x="484" y="499" class="er-field">name</text><text x="484" y="517" class="er-field">role</text><line x1="115.0" y1="120" x2="115.0" y2="180" stroke="currentColor" stroke-width="1.25"/><text x="115.0" y="114" text-anchor="middle" class="er-card">1</text><text x="115.0" y="174" text-anchor="middle" class="er-card">N</text><line x1="115.0" y1="298" x2="115.0" y2="380" stroke="currentColor" stroke-width="1.25"/><text x="115.0" y="292" text-anchor="middle" class="er-card">1</text><text x="115.0" y="374" text-anchor="middle" class="er-card">N</text><line x1="210" y1="239.0" x2="255" y2="280.0" stroke="currentColor" stroke-width="1.25"/><text x="222" y="233.0" text-anchor="middle" class="er-card">1</text><text x="267" y="274.0" text-anchor="middle" class="er-card">N</text><line x1="210" y1="70.0" x2="470" y2="79.0" stroke="currentColor" stroke-width="1.25"/><text x="222" y="64.0" text-anchor="middle" class="er-card">1</text><text x="482" y="73.0" text-anchor="middle" class="er-card">N</text><line x1="575.0" y1="138" x2="360.0" y2="230" stroke="currentColor" stroke-width="1.25"/><text x="575.0" y="132" text-anchor="middle" class="er-card">1</text><text x="360.0" y="224" text-anchor="middle" class="er-card">N</text><line x1="680" y1="79.0" x2="470" y2="289.0" stroke="currentColor" stroke-width="1.25"/><text x="692" y="73.0" text-anchor="middle" class="er-card">1</text><text x="482" y="283.0" text-anchor="middle" class="er-card">N</text><line x1="575.0" y1="348" x2="575.0" y2="440" stroke="currentColor" stroke-width="1.25"/><text x="575.0" y="342" text-anchor="middle" class="er-card">N</text><text x="575.0" y="434" text-anchor="middle" class="er-card">1</text></svg>
+      </div>
+      <figcaption>PK = primary key, FK = foreign key. Line labels read as cardinality at each end (1 → N).</figcaption>
+    </figure>
+  </section>
+
+  <section class="diagram">
+    <div class="diagram-head">
+      <span class="diagram-num">04</span>
+      <h2>Use Case Diagram</h2>
+    </div>
+    <p class="diagram-intro">Three human roles plus one external system. The dashed ellipse (Detect Anomaly) isn't triggered directly by anyone — it's pulled in automatically whenever the operator's monitoring session runs.</p>
+    <figure>
+      <div class="svg-scroll">
+        <svg viewBox="0 0 820 900" role="img" aria-label="Use case diagram: Satellite Operator monitors live telemetry, views and acknowledges anomaly alerts and their explanations, and views historical trends; Mission Control Admin configures thresholds and exports reports; ML Engineer retrains the model; an external Telemetry Source feeds the ingestion use case."><defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+</marker>
+</defs><rect x="190" y="20" width="400" height="800" rx="10" fill="none" stroke="currentColor" stroke-width="1.25"/><text x="390.0" y="42" text-anchor="middle" class="er-title">Anomaly Detection System</text><ellipse cx="390.0" cy="110" rx="150.0" ry="28.0" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="390.0" y="114" text-anchor="middle" class="node-title-sm">Ingest Telemetry Data</text><ellipse cx="390.0" cy="190" rx="150.0" ry="28.0" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="390.0" y="194" text-anchor="middle" class="node-title-sm">Monitor Live Telemetry</text><ellipse cx="390.0" cy="270" rx="150.0" ry="28.0" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25" stroke-dasharray="4 3"/><text x="390.0" y="274" text-anchor="middle" class="node-title-sm">Detect Anomaly</text><ellipse cx="390.0" cy="350" rx="150.0" ry="28.0" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="390.0" y="354" text-anchor="middle" class="node-title-sm">View Anomaly Alert</text><ellipse cx="390.0" cy="430" rx="150.0" ry="28.0" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="390.0" y="434" text-anchor="middle" class="node-title-sm">View Explanation &amp; Root Cause</text><ellipse cx="390.0" cy="510" rx="150.0" ry="28.0" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="390.0" y="514" text-anchor="middle" class="node-title-sm">Acknowledge Alert</text><ellipse cx="390.0" cy="590" rx="150.0" ry="28.0" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="390.0" y="594" text-anchor="middle" class="node-title-sm">View Historical Trends</text><ellipse cx="390.0" cy="670" rx="150.0" ry="28.0" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="390.0" y="674" text-anchor="middle" class="node-title-sm">Configure Alert Thresholds</text><ellipse cx="390.0" cy="750" rx="150.0" ry="28.0" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="390.0" y="754" text-anchor="middle" class="node-title-sm">Export Report</text><ellipse cx="390.0" cy="830" rx="150.0" ry="28.0" fill="var(--surface)" stroke="var(--border)" stroke-width="1.25"/><text x="390.0" y="834" text-anchor="middle" class="node-title-sm">Retrain Model</text><circle cx="70" cy="330" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="70" y1="340" x2="70" y2="375" stroke="currentColor" stroke-width="1.5"/><line x1="54" y1="350" x2="86" y2="350" stroke="currentColor" stroke-width="1.5"/><line x1="70" y1="375" x2="56" y2="400" stroke="currentColor" stroke-width="1.5"/><line x1="70" y1="375" x2="84" y2="400" stroke="currentColor" stroke-width="1.5"/><text x="70" y="418" text-anchor="middle" class="node-title-sm">Satellite Operator</text><circle cx="700" cy="610" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="700" y1="620" x2="700" y2="655" stroke="currentColor" stroke-width="1.5"/><line x1="684" y1="630" x2="716" y2="630" stroke="currentColor" stroke-width="1.5"/><line x1="700" y1="655" x2="686" y2="680" stroke="currentColor" stroke-width="1.5"/><line x1="700" y1="655" x2="714" y2="680" stroke="currentColor" stroke-width="1.5"/><text x="700" y="698" text-anchor="middle" class="node-title-sm">Mission Control</text><text x="700" y="712" text-anchor="middle" class="node-title-sm">Admin</text><circle cx="70" cy="770" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="70" y1="780" x2="70" y2="815" stroke="currentColor" stroke-width="1.5"/><line x1="54" y1="790" x2="86" y2="790" stroke="currentColor" stroke-width="1.5"/><line x1="70" y1="815" x2="56" y2="840" stroke="currentColor" stroke-width="1.5"/><line x1="70" y1="815" x2="84" y2="840" stroke="currentColor" stroke-width="1.5"/><text x="70" y="858" text-anchor="middle" class="node-title-sm">ML Engineer</text><rect x="635.0" y="90" width="130" height="62" rx="4" fill="var(--surface)" stroke="currentColor" stroke-width="1.25" stroke-dasharray="4 3"/><text x="700" y="118.0" text-anchor="middle" class="node-title-sm">Telemetry Source</text><text x="700" y="134.0" text-anchor="middle" class="node-title-sm">(SatNOGS / NASA)</text><line x1="70" y1="365" x2="190" y2="190" stroke="currentColor" stroke-width="1.25"/><line x1="70" y1="365" x2="190" y2="350" stroke="currentColor" stroke-width="1.25"/><line x1="70" y1="365" x2="190" y2="510" stroke="currentColor" stroke-width="1.25"/><line x1="70" y1="365" x2="190" y2="590" stroke="currentColor" stroke-width="1.25"/><line x1="700" y1="645" x2="590" y2="590" stroke="currentColor" stroke-width="1.25"/><line x1="700" y1="645" x2="590" y2="670" stroke="currentColor" stroke-width="1.25"/><line x1="700" y1="645" x2="590" y2="750" stroke="currentColor" stroke-width="1.25"/><line x1="70" y1="805" x2="190" y2="830" stroke="currentColor" stroke-width="1.25"/><line x1="700" y1="121.0" x2="590" y2="110" stroke="currentColor" stroke-width="1.25"/><line x1="390.0" y1="218" x2="390.0" y2="242" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/><text x="460.0" y="230.0" text-anchor="middle" class="edge-label">&lt;&lt;include&gt;&gt;</text><line x1="390.0" y1="402" x2="390.0" y2="378" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/><text x="460.0" y="390.0" text-anchor="middle" class="edge-label">&lt;&lt;extend&gt;&gt;</text></svg>
+      </div>
+      <figcaption>&lt;&lt;include&gt;&gt; means the base use case always triggers the included one. &lt;&lt;extend&gt;&gt; means the extending use case is optional — the operator can view an alert without opening its explanation.</figcaption>
+    </figure>
+  </section>
+
+  <footer class="page">
+    Prepared for SIH 2026 · Explainable Satellite Anomaly Detection
+  </footer>
+</div>

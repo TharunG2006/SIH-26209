@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Downloaded dataset — regenerate with `python src/fetch_data.py` (~9 MB)
+prototype/data/smap_msl/
+
+# Trained model weights — regenerate with train.py / train_channels.py (~23 MB)
+prototype/models/*.pt
+prototype/models/*_channels/
+
+# Operator-supplied channel names are mission-specific, not ours to ship
+prototype/config/channel_names.json
+
+# Streamlit
+.streamlit/
+
+# Scratch
+*.log
