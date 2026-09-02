@@ -10,17 +10,42 @@ timesteps where reality diverges from the forecast, and — the part that
 distinguishes it from the NASA baseline — **explains every alert by naming the
 channels and subsystems that caused it**, ranked by how much each contributed.
 
-## Quick start
+## Running it
+
+There is no separate frontend and backend to start. Streamlit is both the web
+server and the UI, it imports `src/` directly rather than calling an API, and
+the database is a SQLite file with no server process. One command runs the whole
+application:
 
 ```bash
-pip install torch pandas numpy pyarrow plotly streamlit scikit-learn
+python -m streamlit run prototype/dashboard/app.py
 ```
 
+That serves the dashboard on http://localhost:8501.
+
+### First time on a new machine
+
 ```bash
-python src/fetch_data.py       # downloads NASA SMAP/MSL telemetry (~9 MB)
-python src/train.py            # trains one model per spacecraft
-python src/evaluate.py --sweep # scores against NASA's labelled anomalies
-streamlit run dashboard/app.py # operator dashboard
+pip install -r prototype/requirements.txt
+python prototype/src/fetch_data.py          # NASA SMAP/MSL telemetry (~9 MB)
+python prototype/src/train.py               # joint model, ~12 min
+python prototype/src/train_channels.py      # 48 per-channel models, ~45 min
+python prototype/src/populate_db.py         # fill the SQLite schema
+python -m streamlit run prototype/dashboard/app.py
+```
+
+The two training steps are the slow part and only need doing once; everything
+afterwards reads the saved checkpoints. Scripts can be run from any directory.
+
+### The rest of the command line
+
+```bash
+python prototype/src/evaluate.py --sweep      # score against NASA's labels
+python prototype/src/tune.py                  # cross-mission tuning, held-out results
+python prototype/src/populate_db.py --alerts  # open alert queue
+python prototype/src/populate_db.py --show 2  # one anomaly and its explanation
+python prototype/src/satnogs.py --list        # live satellites with a decoder
+python prototype/src/satnogs.py --norad 68460 # fetch and decode live telemetry
 ```
 
 ## Design decisions worth defending
