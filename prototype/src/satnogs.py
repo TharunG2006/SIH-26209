@@ -21,10 +21,12 @@ import json
 import os
 import re
 import sys
+import hashlib
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
@@ -42,9 +44,80 @@ SATNOGS_DIR = DATA_DIR.parent / "satnogs"
 FRAME_INDEX = "timestep"
 
 
-def _get(url: str, timeout: int = 60):
-    with urllib.request.urlopen(url, timeout=timeout) as r:
-        return json.load(r)
+class RateLimited(RuntimeError):
+    """SatNOGS asked us to back off."""
+
+    def __init__(self, retry_after: int):
+        self.retry_after = retry_after
+        mins = retry_after / 60
+        super().__init__(
+            f"SatNOGS is rate limiting this client; retry in {retry_after}s "
+            f"(~{mins:.0f} min). Results already cached under "
+            f"{CACHE_DIR} are still usable."
+        )
+
+
+# SatNOGS is a volunteer-run service with no API key and a real rate limit.
+# Requests are spaced out and every response is cached on disk, so a re-run
+# costs nothing and a long fetch does not hammer somebody's donated bandwidth.
+# The observation API and the frame payloads live on different hosts: the API
+# is SatNOGS' own server and rate limits hard, while payloads are served from
+# object storage.  They get separate budgets so a long frame download does not
+# have to crawl at the API's pace.
+REQUEST_SPACING = 0.6      # seconds between SatNOGS API calls
+FRAME_SPACING = 0.05       # seconds between object-storage frame fetches
+CACHE_DIR = SATNOGS_DIR / "cache"
+_last_request: dict[str, float] = {"api": 0.0, "frame": 0.0}
+
+
+def _throttle(kind: str = "api") -> None:
+    spacing = REQUEST_SPACING if kind == "api" else FRAME_SPACING
+    wait = spacing - (time.monotonic() - _last_request[kind])
+    if wait > 0:
+        time.sleep(wait)
+    _last_request[kind] = time.monotonic()
+
+
+def _get(url: str, timeout: int = 60, cache: bool = True):
+    """Fetch JSON, honouring the cache and the rate limit.
+
+    A 429 is raised rather than swallowed: silently treating "back off" as
+    "no data" made a rate-limited run look like a satellite with no telemetry,
+    which cost real debugging time.
+    """
+    key = CACHE_DIR / (hashlib.sha1(url.encode()).hexdigest() + ".json")
+    if cache and key.exists():
+        return json.loads(key.read_text(encoding="utf-8"))
+    _throttle()
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            payload = json.load(r)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            raise RateLimited(int(exc.headers.get("Retry-After", 0) or 0)) from exc
+        raise
+    if cache:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        key.write_text(json.dumps(payload), encoding="utf-8")
+    return payload
+
+
+def _get_bytes(url: str, timeout: int = 40) -> bytes:
+    """Download one demodulated frame, cached and throttled like the rest."""
+    key = CACHE_DIR / "frames" / (hashlib.sha1(url.encode()).hexdigest() + ".bin")
+    if key.exists():
+        return key.read_bytes()
+    _throttle("frame")
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            raw = r.read()
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            raise RateLimited(int(exc.headers.get("Retry-After", 0) or 0)) from exc
+        raise
+    key.parent.mkdir(parents=True, exist_ok=True)
+    key.write_bytes(raw)
+    return raw
 
 
 def available_decoders() -> set[str]:
@@ -96,28 +169,43 @@ def list_decodable(limit: int = 40) -> list[dict]:
     return out
 
 
-def fetch_observations(norad_id: int, pages: int = 4) -> list[dict]:
-    """Recent observations for one satellite, newest first."""
-    obs = []
+def fetch_observations(norad_id: int, days: int = 30,
+                       window_hours: int = 24, verbose: bool = False) -> list[dict]:
+    """Observations for one satellite over the last `days`, newest first.
+
+    The Network API's `page` parameter does not work on this endpoint - page 2
+    returns an error object rather than the next slice - so history is gathered
+    by stepping backwards through date windows instead.  Each window is capped
+    at 25 results server-side, which is why the window is kept short: a day at a
+    time yields far more total coverage than one wide query.
+    """
     base = (f"{NETWORK}/observations/?format=json&status=good"
             f"&norad_cat_id={norad_id}")
-    for page in range(1, pages + 1):
-        # The API rejects an explicit `page=1` - it returns a single unrelated
-        # record rather than the first page - so the first request omits the
-        # parameter entirely and paging starts at 2.
-        url = base if page == 1 else f"{base}&page={page}"
+    now = datetime.now(timezone.utc)
+    seen, unique = set(), []
+    for i in range(days):
+        end = now - timedelta(hours=window_hours * i)
+        start = end - timedelta(hours=window_hours)
+        url = (f"{base}&start={start:%Y-%m-%dT%H:%M:%SZ}"
+               f"&end={end:%Y-%m-%dT%H:%M:%SZ}")
         try:
             batch = _get(url)
-        except urllib.error.HTTPError:
-            break            # past the last page
-        if not isinstance(batch, list) or not batch:
+        except RateLimited:
+            if verbose:
+                print(f"    rate limited after {len(unique)} observations; "
+                      "keeping what was fetched", flush=True)
             break
-        obs.extend(batch)
-    seen, unique = set(), []
-    for o in obs:
-        if o["id"] not in seen and o.get("demoddata"):
-            seen.add(o["id"])
-            unique.append(o)
+        except (urllib.error.HTTPError, urllib.error.URLError):
+            continue          # a single bad window must not end the walk
+        if not isinstance(batch, list):
+            continue
+        for o in batch:
+            if o.get("id") not in seen and o.get("demoddata"):
+                seen.add(o["id"])
+                unique.append(o)
+        if verbose:
+            print(f"    {start:%Y-%m-%d}: {len(unique)} observations so far",
+                  flush=True)
     return unique
 
 
@@ -128,8 +216,10 @@ def decode_observation(obs: dict, cls) -> list[dict]:
     rows = []
     for d in obs.get("demoddata", []):
         try:
-            raw = urllib.request.urlopen(d["payload_demod"], timeout=40).read()
+            raw = _get_bytes(d["payload_demod"])
             fields = decoder.get_fields(cls.from_bytes(raw))
+        except RateLimited:
+            raise
         except Exception:
             # A frame can be truncated or corrupted in the air; one bad frame
             # must not abort the pass.
@@ -143,8 +233,8 @@ def decode_observation(obs: dict, cls) -> list[dict]:
     return rows
 
 
-def build_series(norad_id: int, pages: int = 4, workers: int = 8,
-                 verbose: bool = True) -> pd.DataFrame:
+def build_series(norad_id: int, days: int = 30, workers: int = 8,
+                 max_frames: int = 4000, verbose: bool = True) -> pd.DataFrame:
     """Fetch, decode and assemble one satellite's telemetry into a table."""
     info = satellite_info(norad_id)
     if info is None:
@@ -156,15 +246,21 @@ def build_series(norad_id: int, pages: int = 4, workers: int = 8,
     if cls is None:
         raise ValueError(f"decoder module {dec!r} exposes no frame class")
 
-    obs = fetch_observations(norad_id, pages)
+    obs = fetch_observations(norad_id, days, verbose=verbose)
     if verbose:
         print(f"{info['name']} (NORAD {norad_id}): {len(obs)} observations "
               f"with frames, decoder {dec!r}")
 
+    # Each frame is one HTTP request, so an unbounded fetch over a month of
+    # observations would mean tens of thousands of them.  Newest first, capped.
     rows: list[dict] = []
     with ThreadPoolExecutor(workers) as pool:
         for batch in pool.map(lambda o: decode_observation(o, cls), obs):
             rows.extend(batch)
+            if len(rows) >= max_frames:
+                if verbose:
+                    print(f"  reached the {max_frames}-frame cap", flush=True)
+                break
     if not rows:
         raise ValueError("no frames decoded - the satellite may be transmitting "
                          "a mode this decoder does not cover")
@@ -201,8 +297,10 @@ if __name__ == "__main__":
     ap.add_argument("--list", action="store_true",
                     help="show recently-heard satellites that have a decoder")
     ap.add_argument("--norad", type=int, help="NORAD id to fetch and decode")
-    ap.add_argument("--pages", type=int, default=4,
-                    help="observation pages to pull (25 per page)")
+    ap.add_argument("--days", type=int, default=30,
+                    help="how many days of history to walk back through")
+    ap.add_argument("--max-frames", type=int, default=4000,
+                    help="stop after this many decoded frames (one request each)")
     args = ap.parse_args()
 
     if args.list:
@@ -217,7 +315,8 @@ if __name__ == "__main__":
         ap.error("pass --norad <id>, or --list to see what is available")
 
     info = satellite_info(args.norad)
-    df = build_series(args.norad, pages=args.pages)
+    df = build_series(args.norad, days=args.days,
+                      max_frames=args.max_frames)
     cols = usable_channels(df)
     print(f"\n{len(cols)} channels vary and are usable as telemetry:")
     for c in cols[:20]:
