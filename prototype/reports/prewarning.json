@@ -1,0 +1,699 @@
+{
+  "SMAP": {
+    "spacecraft": "SMAP",
+    "labelled_windows_examined": 68,
+    "alert": {
+      "warned": 0,
+      "of": 68,
+      "rate": 0.0,
+      "median_lead": null,
+      "mean_lead": null,
+      "max_lead": null,
+      "rate_95ci": [
+        0.0,
+        0.0
+      ]
+    },
+    "watch": {
+      "warned": 24,
+      "of": 68,
+      "rate": 0.3529,
+      "rate_95ci": [
+        0.25,
+        0.4716
+      ],
+      "median_lead": 489,
+      "mean_lead": 445.5,
+      "max_lead": 500,
+      "fires_at_random": 0.4676,
+      "lift": 0.755,
+      "is_early_warning": false
+    },
+    "watch_fraction": 0.5,
+    "max_credible_lead": 500,
+    "per_window": [
+      {
+        "channel": "A-1",
+        "labelled_start": 4690,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "A-2",
+        "labelled_start": 4450,
+        "alert_lead": null,
+        "watch_lead": 425
+      },
+      {
+        "channel": "A-3",
+        "labelled_start": 4575,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "A-4",
+        "labelled_start": 4550,
+        "alert_lead": null,
+        "watch_lead": 423
+      },
+      {
+        "channel": "A-5",
+        "labelled_start": 2750,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "A-6",
+        "labelled_start": 1890,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "A-7",
+        "labelled_start": 6200,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "A-8",
+        "labelled_start": 4569,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "A-9",
+        "labelled_start": 4569,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "B-1",
+        "labelled_start": 5060,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-1",
+        "labelled_start": 5250,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-11",
+        "labelled_start": 4270,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-12",
+        "labelled_start": 5178,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-13",
+        "labelled_start": 5070,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-2",
+        "labelled_start": 4319,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-3",
+        "labelled_start": 5225,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-4",
+        "labelled_start": 5225,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-5",
+        "labelled_start": 4800,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "D-6",
+        "labelled_start": 4870,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-7",
+        "labelled_start": 4940,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-8",
+        "labelled_start": 4370,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-9",
+        "labelled_start": 6250,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "E-1",
+        "labelled_start": 5000,
+        "alert_lead": null,
+        "watch_lead": 331
+      },
+      {
+        "channel": "E-1",
+        "labelled_start": 5610,
+        "alert_lead": null,
+        "watch_lead": 490
+      },
+      {
+        "channel": "E-10",
+        "labelled_start": 5000,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "E-10",
+        "labelled_start": 5601,
+        "alert_lead": null,
+        "watch_lead": 33
+      },
+      {
+        "channel": "E-11",
+        "labelled_start": 5000,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "E-11",
+        "labelled_start": 5614,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "E-12",
+        "labelled_start": 5610,
+        "alert_lead": null,
+        "watch_lead": 490
+      },
+      {
+        "channel": "E-12",
+        "labelled_start": 5000,
+        "alert_lead": null,
+        "watch_lead": 331
+      },
+      {
+        "channel": "E-13",
+        "labelled_start": 5309,
+        "alert_lead": null,
+        "watch_lead": 494
+      },
+      {
+        "channel": "E-13",
+        "labelled_start": 5600,
+        "alert_lead": null,
+        "watch_lead": 496
+      },
+      {
+        "channel": "E-13",
+        "labelled_start": 6449,
+        "alert_lead": null,
+        "watch_lead": 473
+      },
+      {
+        "channel": "E-2",
+        "labelled_start": 5598,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "E-3",
+        "labelled_start": 5094,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "E-4",
+        "labelled_start": 5450,
+        "alert_lead": null,
+        "watch_lead": 423
+      },
+      {
+        "channel": "E-5",
+        "labelled_start": 5600,
+        "alert_lead": null,
+        "watch_lead": 494
+      },
+      {
+        "channel": "E-6",
+        "labelled_start": 5610,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "E-7",
+        "labelled_start": 5394,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "E-8",
+        "labelled_start": 5400,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "E-9",
+        "labelled_start": 5550,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "F-1",
+        "labelled_start": 5392,
+        "alert_lead": null,
+        "watch_lead": 455
+      },
+      {
+        "channel": "F-2",
+        "labelled_start": 5669,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "F-3",
+        "labelled_start": 5600,
+        "alert_lead": null,
+        "watch_lead": 433
+      },
+      {
+        "channel": "G-1",
+        "labelled_start": 4770,
+        "alert_lead": null,
+        "watch_lead": 489
+      },
+      {
+        "channel": "G-2",
+        "labelled_start": 4030,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "G-3",
+        "labelled_start": 4200,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "G-4",
+        "labelled_start": 4690,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "G-6",
+        "labelled_start": 5600,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "G-7",
+        "labelled_start": 3650,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "G-7",
+        "labelled_start": 5050,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "G-7",
+        "labelled_start": 7560,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "P-1",
+        "labelled_start": 2149,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "P-1",
+        "labelled_start": 4536,
+        "alert_lead": null,
+        "watch_lead": 493
+      },
+      {
+        "channel": "P-1",
+        "labelled_start": 3539,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "P-2",
+        "labelled_start": 5300,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "P-3",
+        "labelled_start": 5401,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "P-4",
+        "labelled_start": 950,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "P-4",
+        "labelled_start": 2150,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "P-4",
+        "labelled_start": 4770,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "P-7",
+        "labelled_start": 4950,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "R-1",
+        "labelled_start": 4510,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "S-1",
+        "labelled_start": 5300,
+        "alert_lead": null,
+        "watch_lead": 437
+      },
+      {
+        "channel": "T-1",
+        "labelled_start": 2399,
+        "alert_lead": null,
+        "watch_lead": 482
+      },
+      {
+        "channel": "T-1",
+        "labelled_start": 6550,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "T-2",
+        "labelled_start": 6840,
+        "alert_lead": null,
+        "watch_lead": 499
+      },
+      {
+        "channel": "T-3",
+        "labelled_start": 2098,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "T-3",
+        "labelled_start": 5200,
+        "alert_lead": null,
+        "watch_lead": null
+      }
+    ]
+  },
+  "MSL": {
+    "spacecraft": "MSL",
+    "labelled_windows_examined": 36,
+    "alert": {
+      "warned": 4,
+      "of": 36,
+      "rate": 0.1111,
+      "rate_95ci": [
+        0.0441,
+        0.2532
+      ],
+      "median_lead": 228,
+      "mean_lead": 233.2,
+      "max_lead": 460,
+      "fires_at_random": 0.1444,
+      "lift": 0.769,
+      "is_early_warning": false
+    },
+    "watch": {
+      "warned": 22,
+      "of": 36,
+      "rate": 0.6111,
+      "rate_95ci": [
+        0.4486,
+        0.7522
+      ],
+      "median_lead": 472,
+      "mean_lead": 339.0,
+      "max_lead": 500,
+      "fires_at_random": 0.6944,
+      "lift": 0.88,
+      "is_early_warning": false
+    },
+    "watch_fraction": 0.5,
+    "max_credible_lead": 500,
+    "per_window": [
+      {
+        "channel": "C-1",
+        "labelled_start": 550,
+        "alert_lead": null,
+        "watch_lead": 13
+      },
+      {
+        "channel": "C-1",
+        "labelled_start": 2100,
+        "alert_lead": null,
+        "watch_lead": 101
+      },
+      {
+        "channel": "C-2",
+        "labelled_start": 290,
+        "alert_lead": 16,
+        "watch_lead": 28
+      },
+      {
+        "channel": "C-2",
+        "labelled_start": 1540,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "D-14",
+        "labelled_start": 1630,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "D-14",
+        "labelled_start": 1800,
+        "alert_lead": null,
+        "watch_lead": 159
+      },
+      {
+        "channel": "D-15",
+        "labelled_start": 1500,
+        "alert_lead": null,
+        "watch_lead": 495
+      },
+      {
+        "channel": "D-16",
+        "labelled_start": 600,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "F-4",
+        "labelled_start": 2700,
+        "alert_lead": null,
+        "watch_lead": 144
+      },
+      {
+        "channel": "F-5",
+        "labelled_start": 3550,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "F-7",
+        "labelled_start": 1250,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "F-7",
+        "labelled_start": 2670,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "F-7",
+        "labelled_start": 3325,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "F-8",
+        "labelled_start": 1950,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "M-1",
+        "labelled_start": 1110,
+        "alert_lead": 460,
+        "watch_lead": 500
+      },
+      {
+        "channel": "M-2",
+        "labelled_start": 1110,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "M-3",
+        "labelled_start": 1250,
+        "alert_lead": null,
+        "watch_lead": 481
+      },
+      {
+        "channel": "M-4",
+        "labelled_start": 1250,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "M-5",
+        "labelled_start": 1250,
+        "alert_lead": null,
+        "watch_lead": 458
+      },
+      {
+        "channel": "M-6",
+        "labelled_start": 1850,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "M-7",
+        "labelled_start": 940,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "P-10",
+        "labelled_start": 4590,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "P-11",
+        "labelled_start": 1778,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "P-11",
+        "labelled_start": 1238,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "P-14",
+        "labelled_start": 4575,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "P-15",
+        "labelled_start": 1390,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "S-2",
+        "labelled_start": 900,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "T-12",
+        "labelled_start": 630,
+        "alert_lead": 17,
+        "watch_lead": 20
+      },
+      {
+        "channel": "T-13",
+        "labelled_start": 690,
+        "alert_lead": 440,
+        "watch_lead": 440
+      },
+      {
+        "channel": "T-13",
+        "labelled_start": 1900,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "T-4",
+        "labelled_start": 1172,
+        "alert_lead": null,
+        "watch_lead": 500
+      },
+      {
+        "channel": "T-5",
+        "labelled_start": 1200,
+        "alert_lead": null,
+        "watch_lead": null
+      },
+      {
+        "channel": "T-8",
+        "labelled_start": 870,
+        "alert_lead": null,
+        "watch_lead": 464
+      },
+      {
+        "channel": "T-8",
+        "labelled_start": 1330,
+        "alert_lead": null,
+        "watch_lead": 491
+      },
+      {
+        "channel": "T-9",
+        "labelled_start": 780,
+        "alert_lead": null,
+        "watch_lead": 27
+      },
+      {
+        "channel": "T-9",
+        "labelled_start": 890,
+        "alert_lead": null,
+        "watch_lead": 137
+      }
+    ]
+  }
+}

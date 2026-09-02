@@ -3,49 +3,49 @@
     "tuned_on": "MSL",
     "reported_on": "SMAP",
     "chosen_config": {
-      "prune_drop": 0.05,
+      "prune_drop": 0.1,
       "min_run": 5,
       "z_grid_max": 6.0,
-      "threshold_signal": "err"
+      "threshold_signal": "z"
     },
     "config_score_on_tuning_mission": {
       "precision": 0.7143,
-      "recall": 0.3846,
-      "f1": 0.5
+      "recall": 0.3889,
+      "f1": 0.5036
     },
     "held_out_result": {
-      "true_positives": 17,
-      "false_positives": 4,
-      "false_negatives": 21,
-      "n_predicted": 21,
-      "n_labelled": 37,
-      "precision": 0.8095,
-      "recall": 0.4324,
-      "f1": 0.5637,
-      "incidents_shown_to_operator": 10,
-      "events_matched_to_labels": 10,
-      "top1_hits": 9,
-      "top3_hits": 9,
-      "top1_channel_accuracy": 0.9,
-      "top3_channel_accuracy": 0.9,
+      "true_positives": 46,
+      "false_positives": 7,
+      "false_negatives": 27,
+      "n_predicted": 53,
+      "n_labelled": 68,
+      "precision": 0.8679,
+      "recall": 0.6029,
+      "f1": 0.7116,
+      "incidents_shown_to_operator": 20,
+      "events_matched_to_labels": 19,
+      "top1_hits": 19,
+      "top3_hits": 19,
+      "top1_channel_accuracy": 1.0,
+      "top3_channel_accuracy": 1.0,
       "top1_95ci": [
-        0.5958,
-        0.9821
-      ],
-      "top3_95ci": [
-        0.5958,
-        0.9821
-      ],
-      "forecast_mae": 0.16424205899238586,
-      "z_min": "dynamic",
-      "min_run": 5,
-      "operational_precision": 1.0,
-      "operational_95ci": [
-        0.7225,
+        0.8318,
         1.0
       ],
-      "n_incidents": 10,
-      "incidents_during_a_real_fault": 10,
+      "top3_95ci": [
+        0.8318,
+        1.0
+      ],
+      "forecast_mae": 0.22884409129619598,
+      "z_min": "dynamic",
+      "min_run": 5,
+      "operational_precision": 0.95,
+      "operational_95ci": [
+        0.7639,
+        0.9911
+      ],
+      "n_incidents": 20,
+      "incidents_during_a_real_fault": 19,
       "forecaster": "per-channel ensemble (full length)",
       "labels_unreachable": 0
     },
@@ -56,25 +56,25 @@
     "reported_on": "MSL",
     "chosen_config": {
       "prune_drop": 0.0,
-      "min_run": 5,
-      "z_grid_max": 10.0,
+      "min_run": 3,
+      "z_grid_max": 6.0,
       "threshold_signal": "err"
     },
     "config_score_on_tuning_mission": {
-      "precision": 0.8636,
-      "recall": 0.4865,
-      "f1": 0.6224
+      "precision": 0.8644,
+      "recall": 0.6618,
+      "f1": 0.7496
     },
     "held_out_result": {
-      "true_positives": 10,
-      "false_positives": 6,
-      "false_negatives": 16,
-      "n_predicted": 16,
-      "n_labelled": 26,
-      "precision": 0.625,
-      "recall": 0.3846,
-      "f1": 0.4762,
-      "incidents_shown_to_operator": 9,
+      "true_positives": 18,
+      "false_positives": 17,
+      "false_negatives": 19,
+      "n_predicted": 35,
+      "n_labelled": 36,
+      "precision": 0.5143,
+      "recall": 0.4722,
+      "f1": 0.4924,
+      "incidents_shown_to_operator": 8,
       "events_matched_to_labels": 7,
       "top1_hits": 6,
       "top3_hits": 6,
@@ -88,15 +88,15 @@
         0.4869,
         0.9743
       ],
-      "forecast_mae": 0.7921653389930725,
+      "forecast_mae": 0.6583319306373596,
       "z_min": "dynamic",
-      "min_run": 5,
-      "operational_precision": 0.7778,
+      "min_run": 3,
+      "operational_precision": 0.875,
       "operational_95ci": [
-        0.4526,
-        0.9368
+        0.5291,
+        0.9776
       ],
-      "n_incidents": 9,
+      "n_incidents": 8,
       "incidents_during_a_real_fault": 7,
       "forecaster": "per-channel ensemble (full length)",
       "labels_unreachable": 0

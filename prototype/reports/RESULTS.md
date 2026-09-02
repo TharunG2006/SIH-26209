@@ -282,3 +282,57 @@ That is now three approaches to recall that either did not help or did not
 survive out-of-sample selection. The honest conclusion is unchanged: closing
 this gap needs more labelled missions or a detector that does not rely on
 forecast error alone, not further tuning of this one.
+
+
+# Results on the full 82-channel dataset
+
+Everything above was measured while the system monitored 48 of NASA's channels.
+It now monitors all of them, and the numbers below supersede the earlier ones.
+
+| | SMAP | MSL | telemanom |
+|---|---|---|---|
+| precision | **0.868** | 0.514 | 0.855 / 0.926 |
+| recall | **0.603** | 0.472 | 0.855 / 0.694 |
+| F1 | **0.712** | 0.492 | 0.855 / 0.794 |
+| labelled windows | 68 | 36 | — |
+| operational precision | 0.950 | 0.875 | not reported |
+| attribution top-1 | **1.0** (n=19) | 0.8571 (n=7) | cannot report |
+
+Pooled attribution: **25/26 = 0.962, 95% CI [0.81, 0.99]**.
+
+**SMAP precision 0.868 now exceeds the published baseline's 0.855**, and recall
+rose from 0.432 to 0.603 purely by monitoring the channels that were being
+ignored. Nothing about the model or the thresholds changed - the gain came from
+removing a self-imposed blind spot over 40% of the ground truth. MSL's precision
+fell (0.514), which is the honest cost of scoring against 36 labelled windows
+instead of 19.
+
+## Early warning: measured, and it does not work
+
+The stated goal includes warning before a fault. That is now measured rather
+than assumed, and the answer is negative.
+
+| | warns before | random baseline | lift | verdict |
+|---|---|---|---|---|
+| SMAP alert | never | — | — | no early warning |
+| SMAP watch | 35% | 47% | 0.755 | **not early warning** |
+| MSL alert | 11% | 14% | 0.769 | **not early warning** |
+| MSL watch | 61% | 69% | 0.88 | **not early warning** |
+
+Read the first pass of this on its own and it looks like a success: "warns
+before 61% of MSL anomalies, median lead 472 readings". Calibrated against
+matched random points on the same channel, that same signal fires before 69% of
+arbitrary moments. Every lift is **below 1.0** - each level speaks slightly less
+readily before a real anomaly than before nothing at all.
+
+So the system detects faults as they begin and does not anticipate them. The
+claim to make is *earlier detection with an explanation*, never prediction.
+
+This is the third signal in this project that looked explanatory and was not:
+protocol headers selected as telemetry because they appear in every frame,
+command bits that precede 79% of all readings, and now a warning threshold
+crossed most of the time. Each was caught by the same test - does it fire more
+often when something is actually wrong - and that test is now built into the
+code rather than remembered. `factors.py` requires a lift of 2.0 before
+reporting a cause; `prewarning.py` requires 1.5 before calling something early
+warning.

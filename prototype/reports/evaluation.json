@@ -1,18 +1,28 @@
 {
   "SMAP": {
-    "true_positives": 10,
+    "true_positives": 27,
     "false_positives": 0,
-    "false_negatives": 27,
-    "n_predicted": 10,
-    "n_labelled": 37,
+    "false_negatives": 42,
+    "n_predicted": 27,
+    "n_labelled": 68,
     "precision": 1.0,
-    "recall": 0.2703,
-    "f1": 0.4255,
-    "incidents_shown_to_operator": 7,
-    "events_matched_to_labels": 7,
+    "recall": 0.3824,
+    "f1": 0.5532,
+    "incidents_shown_to_operator": 12,
+    "events_matched_to_labels": 12,
+    "top1_hits": 12,
+    "top3_hits": 12,
     "top1_channel_accuracy": 1.0,
     "top3_channel_accuracy": 1.0,
-    "forecast_mae": 0.16424205899238586,
+    "top1_95ci": [
+      0.7575,
+      1.0
+    ],
+    "top3_95ci": [
+      0.7575,
+      1.0
+    ],
+    "forecast_mae": 0.22884409129619598,
     "z_min": "dynamic",
     "min_run": 5,
     "telemanom_baseline": {
@@ -20,23 +30,40 @@
       "recall": 0.855,
       "f1": 0.855
     },
+    "operational_precision": 1.0,
+    "operational_95ci": [
+      0.7575,
+      1.0
+    ],
+    "n_incidents": 12,
+    "incidents_during_a_real_fault": 12,
     "forecaster": "per-channel ensemble (full length)",
     "labels_unreachable": 0
   },
   "MSL": {
-    "true_positives": 5,
-    "false_positives": 0,
-    "false_negatives": 21,
-    "n_predicted": 5,
-    "n_labelled": 26,
-    "precision": 1.0,
-    "recall": 0.1923,
-    "f1": 0.3226,
-    "incidents_shown_to_operator": 4,
-    "events_matched_to_labels": 4,
+    "true_positives": 8,
+    "false_positives": 1,
+    "false_negatives": 28,
+    "n_predicted": 9,
+    "n_labelled": 36,
+    "precision": 0.8889,
+    "recall": 0.2222,
+    "f1": 0.3556,
+    "incidents_shown_to_operator": 7,
+    "events_matched_to_labels": 6,
+    "top1_hits": 6,
+    "top3_hits": 6,
     "top1_channel_accuracy": 1.0,
     "top3_channel_accuracy": 1.0,
-    "forecast_mae": 0.7921653389930725,
+    "top1_95ci": [
+      0.6097,
+      1.0
+    ],
+    "top3_95ci": [
+      0.6097,
+      1.0
+    ],
+    "forecast_mae": 0.6583319306373596,
     "z_min": "dynamic",
     "min_run": 5,
     "telemanom_baseline": {
@@ -44,6 +71,13 @@
       "recall": 0.694,
       "f1": 0.794
     },
+    "operational_precision": 0.8571,
+    "operational_95ci": [
+      0.4869,
+      0.9743
+    ],
+    "n_incidents": 7,
+    "incidents_during_a_real_fault": 6,
     "forecaster": "per-channel ensemble (full length)",
     "labels_unreachable": 0
   }
