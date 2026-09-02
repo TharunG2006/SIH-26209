@@ -19,3 +19,6 @@ prototype/config/channel_names.json
 
 # Scratch
 *.log
+
+# SQLite database - regenerate with `python src/populate_db.py`
+prototype/*.db
