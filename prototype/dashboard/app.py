@@ -5,7 +5,6 @@ Run with:  streamlit run prototype/dashboard/app.py
 from __future__ import annotations
 
 import sys
-import time
 import warnings
 from pathlib import Path
 
@@ -226,12 +225,52 @@ if mode == "Live replay":
     st.caption("Telemetry is streamed back at accelerated speed. Alerts fire "
                "the moment the model's forecast diverges from reality.")
 
-    ctrl1, ctrl2, ctrl3 = st.columns([1, 1, 2])
-    speed = ctrl1.select_slider("Speed", [10, 25, 50, 100, 200], value=50,
-                                help="timesteps advanced per frame")
-    tail = ctrl2.number_input("Visible window", 200, 3000, 800, step=100)
-    start = ctrl3.button("▶ Start replay", type="primary",
-                         use_container_width=True)
+    # Playback is driven by session state and an auto-rerunning fragment rather
+    # than a blocking loop.  A `for ... time.sleep()` loop holds the script
+    # thread for the whole run, so Streamlit cannot process a button press until
+    # it finishes - which means no pause, no scrubbing and no way to stop.
+    sig = (spacecraft, z_min, min_run)
+    if st.session_state.get("replay_sig") != sig:
+        st.session_state.replay_sig = sig
+        st.session_state.replay_pos = min(n_steps, 800)
+        st.session_state.replay_playing = False
+
+    playing = st.session_state.replay_playing
+    pos = st.session_state.replay_pos
+
+    c_play, c_step, c_reset, c_speed, c_tail = st.columns([1, 1, 1, 2, 2])
+    if c_play.button("⏸ Pause" if playing else "▶ Play", type="primary",
+                     use_container_width=True):
+        st.session_state.replay_playing = not playing
+        st.rerun()
+    if c_step.button("⏭ Step", use_container_width=True,
+                     help="advance one frame while paused"):
+        st.session_state.replay_playing = False
+        st.session_state.replay_pos = min(n_steps, pos + 1)
+        st.rerun()
+    if c_reset.button("↺ Restart", use_container_width=True):
+        st.session_state.replay_playing = False
+        st.session_state.replay_pos = min(n_steps, 800)
+        st.rerun()
+    speed = c_speed.select_slider("Speed", [10, 25, 50, 100, 200], value=50,
+                                  help="timesteps advanced per frame")
+    tail = c_tail.number_input("Visible window", 200, 3000, 800, step=100)
+
+    if anomalies:
+        j1, j2 = st.columns([3, 1])
+        pick = j1.selectbox(
+            "Jump to incident", range(len(anomalies)),
+            format_func=lambda i: (
+                f"#{i + 1} · {severity_band(anomalies[i].severity)[0]} · "
+                f"t={anomalies[i].start:,} · {anomalies[i].top_channel()}"),
+            key="replay_jump",
+        )
+        if j2.button("Go to it", use_container_width=True):
+            # Land a little before the incident so it is visible arriving.
+            target = anomalies[pick].start - t_axis[0] + 40
+            st.session_state.replay_pos = int(min(n_steps, max(1, target)))
+            st.session_state.replay_playing = False
+            st.rerun()
 
     def _y_top(visible) -> float:
         """Upper y-limit from the visible slice.
@@ -244,10 +283,8 @@ if mode == "Live replay":
         floor = (z_min * 1.5) if z_min is not None else 4.0
         return max(floor, peak * 1.15)
 
-    plot_slot = st.empty()
-    alert_slot = st.empty()
-
-    def draw(upto: int) -> None:
+    def draw(upto: int, slot) -> None:
+        upto = max(1, min(n_steps, upto))
         lo = max(0, upto - tail)
         visible = result["fleet"][lo:upto]
         fig = go.Figure()
@@ -270,28 +307,38 @@ if mode == "Live replay":
                           xaxis_title="timestep",
                           yaxis_title="anomaly score (σ)",
                           yaxis_range=[0, _y_top(visible)])
-        plot_slot.plotly_chart(fig, use_container_width=True,
-                               key=f"replay{upto}")
+        slot.plotly_chart(fig, use_container_width=True, key="replay_chart")
 
-    if start:
-        fired: list = []
-        for upto in range(speed, n_steps + 1, speed):
-            draw(upto)
-            now = t_axis[upto - 1]
-            active = [a for a in anomalies if a.start <= now and a not in fired]
-            if active:
-                fired.extend(active)
-                latest = max(active, key=lambda a: a.severity)
-                band, colour = severity_band(latest.severity)
-                with alert_slot.container():
-                    st.error(f"**{band} ALERT** at t={latest.start:,} — "
-                             f"{latest.explanation()}")
-            time.sleep(0.05)
-        st.success(f"Replay complete — {len(fired)} alerts raised across "
-                   f"{n_steps:,} timesteps.")
-    else:
-        draw(min(n_steps, 800))
-        st.info("Press **Start replay** to stream the telemetry.")
+    # run_every is re-evaluated on every script run, so toggling the play flag
+    # starts and stops the auto-advance without restarting the app.
+    @st.fragment(run_every="0.25s" if st.session_state.replay_playing else None)
+    def replay_frame() -> None:
+        if st.session_state.replay_playing:
+            st.session_state.replay_pos = min(n_steps,
+                                              st.session_state.replay_pos + speed)
+            if st.session_state.replay_pos >= n_steps:
+                st.session_state.replay_playing = False
+                st.rerun()          # refresh the Play/Pause label
+
+        upto = st.session_state.replay_pos
+        now = int(t_axis[min(upto, n_steps) - 1])
+        st.progress(upto / n_steps,
+                    text=f"t = {now:,} of {int(t_axis[-1]):,}  "
+                         f"({upto:,} / {n_steps:,} readings)")
+        draw(upto, st.empty())
+
+        fired = [a for a in anomalies if a.start <= now]
+        if fired:
+            latest = max(fired, key=lambda a: a.start)
+            band, _ = severity_band(latest.severity)
+            st.error(f"**{band} ALERT** at t={latest.start:,} — "
+                     f"{latest.explanation()}")
+            st.caption(f"{len(fired)} of {len(anomalies)} incidents raised so far."
+                       + ("  Playback finished." if upto >= n_steps else ""))
+        else:
+            st.success("No anomalies raised yet — telemetry nominal.")
+
+    replay_frame()
 
 # ---------------------------------------------------------- full timeline ---
 elif mode == "Full timeline":
