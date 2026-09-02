@@ -23,8 +23,8 @@ if str(SRC) not in sys.path:
 
 from config import (MIN_RUN, SPACECRAFT, Z_MIN, channel_label,  # noqa: E402
                     has_operator_names)
-from data import load_spacecraft  # noqa: E402
 from detect import detect  # noqa: E402
+from sources import list_sources, load_source, utc_for  # noqa: E402
 
 st.set_page_config(page_title="Satellite Health Monitor", layout="wide",
                    page_icon="🛰️")
@@ -46,17 +46,21 @@ def severity_band(z: float) -> tuple[str, str]:
 
 @st.cache_resource(show_spinner="Loading telemetry and model…")
 def load(spacecraft: str, z_min: float | None, min_run: int):
-    bundle = load_spacecraft(spacecraft)
+    bundle, stamps = load_source(spacecraft)
     result = detect(bundle, z_min=z_min, min_run=min_run)
-    return bundle, result
+    return bundle, result, stamps
 
 
 # ---------------------------------------------------------------- sidebar ---
 st.sidebar.title("🛰️ Mission Control")
+SOURCES = {s.key: s for s in list_sources()}
 spacecraft = st.sidebar.selectbox(
-    "Spacecraft", list(SPACECRAFT),
-    format_func=lambda s: SPACECRAFT[s]["label"],
+    "Satellite", list(SOURCES),
+    format_func=lambda k: SOURCES[k].label,
+    help="Benchmark missions carry NASA's labelled anomalies; live captures "
+         "carry real channel names and UTC timestamps but no ground truth.",
 )
+source = SOURCES[spacecraft]
 threshold_mode = st.sidebar.radio(
     "Threshold", ["Automatic (recommended)", "Manual σ"],
     help="Automatic gives each channel its own nonparametric threshold and "
@@ -72,7 +76,7 @@ else:
                               0.1, help="Higher = fewer, more confident alerts")
 min_run = st.sidebar.slider("Min. duration (timesteps)", 1, 20, MIN_RUN)
 
-bundle, result = load(spacecraft, z_min, min_run)
+bundle, result, stamps = load(spacecraft, z_min, min_run)
 channels = result["channels"]
 t_axis = result["t"]
 n_steps = len(t_axis)
@@ -83,13 +87,26 @@ mode = st.sidebar.radio("View", ["Live replay", "Full timeline", "Anomaly log"])
 # ------------------------------------------------------------------ header ---
 st.title("Explainable Satellite Anomaly Detection")
 st.caption(
-    f"{SPACECRAFT[spacecraft]['label']} — {len(channels)} telemetry channels, "
-    f"{n_steps:,} scored timesteps, forecast by the {result['forecaster']}. "
+    f"{source.label} — {len(channels)} telemetry channels, "
+    f"{n_steps:,} scored readings, forecast by the {result['forecaster']}. "
     "Anomalies are attributed back to the channels that caused them, and "
     "ordered by which channel deviated first."
 )
 
-if not has_operator_names():
+if source.is_live:
+    span = ""
+    if stamps is not None and len(stamps):
+        span = f"  Capture spans {utc_for(stamps, 0)} to {utc_for(stamps, -1)}."
+    st.warning(
+        "**Live capture — no ground truth.** These are real frames from a "
+        "satellite currently in orbit, received by volunteer ground stations. "
+        "Nobody publishes when this spacecraft actually malfunctioned, so "
+        "nothing here can be scored: it shows the system running on real "
+        "telemetry, not how accurate it is. The measured accuracy figures come "
+        f"from the NASA benchmark missions.{span}"
+    )
+
+if source.has_labels and not has_operator_names():
     st.caption(
         ":grey[NASA anonymises these channel ids, so channels are shown by id. "
         "Drop a `config/channel_names.json` in (see the example file) to display "
@@ -106,8 +123,11 @@ c1.metric("Channels monitored", len(channels))
 c2.metric("Anomalies detected", len(anomalies))
 c3.metric("Critical", counts["CRITICAL"])
 c4.metric("High", counts["HIGH"])
-c5.metric("Ground-truth windows",
-          sum(len(v) for v in bundle.labels.values()))
+if source.has_labels:
+    c5.metric("Ground-truth windows",
+              sum(len(v) for v in bundle.labels.values()))
+else:
+    c5.metric("Readings captured", f"{n_steps:,}")
 
 
 def explanation_panel(anom, key_prefix: str = "") -> None:
@@ -122,10 +142,17 @@ def explanation_panel(anom, key_prefix: str = "") -> None:
         f"<span style='font-size:0.95em'>{anom.explanation()}</span></div>",
         unsafe_allow_html=True,
     )
+    # A live capture has a real clock; the benchmark ships only reading indices.
+    when = utc_for(stamps, anom.start)
+    if when:
+        st.caption(f"Occurred at **{when}** UTC")
     fm = anom.first_mover()
     if fm is not None:
+        onset = fm["onset"] + t_axis[0]
+        onset_utc = utc_for(stamps, onset)
         st.caption(f"First to deviate: **{fm.get('label', fm['channel'])}** "
-                   f"({fm['subsystem']}) at t={fm['onset'] + t_axis[0]:,}")
+                   f"({fm['subsystem']}) at "
+                   + (f"{onset_utc} UTC" if onset_utc else f"t={onset:,}"))
 
     # --- causal ordering: which channel moved first -------------------------
     chain = anom.chain()
@@ -400,6 +427,8 @@ else:
                 "#": i + 1,
                 "Severity": severity_band(a.severity)[0],
                 "Score (σ)": round(a.severity, 2),
+                **({"When (UTC)": utc_for(stamps, a.start)} if stamps is not None
+                   else {}),
                 "Start": a.start, "End": a.end, "Steps": a.duration,
                 "Largest": a.top_channel(),
                 "Moved first": (a.first_mover() or {}).get("channel", "-"),

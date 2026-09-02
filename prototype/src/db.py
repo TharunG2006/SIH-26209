@@ -58,6 +58,9 @@ CREATE TABLE IF NOT EXISTS Anomaly (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     satellite_id   INTEGER NOT NULL REFERENCES Satellite(id) ON DELETE CASCADE,
     detected_at    INTEGER NOT NULL,      -- timestep the incident opens
+    -- Wall-clock time, present only for live feeds: the NASA benchmark ships a
+    -- reading index and no clock at all.
+    detected_utc   TEXT,
     ended_at       INTEGER,
     peak_at        INTEGER,
     severity_score REAL    NOT NULL,
@@ -147,16 +150,25 @@ def upsert_channels(conn, satellite_id: int, channels: list[str]) -> dict[str, i
 
 
 def store_readings(conn, channel_ids: dict[str, int], series: dict[str, list],
-                   batch: int = 20000) -> int:
-    """Persist raw telemetry. Optional: the detector reads parquet directly."""
+                   batch: int = 20000, stamps=None) -> int:
+    """Persist raw telemetry. Optional: the detector reads parquet directly.
+
+    `stamps` supplies the UTC time of each reading when the source has one, so
+    a live capture fills `timestamp` while the benchmark leaves it NULL.
+    """
     total = 0
     for ch, values in series.items():
         cid = channel_ids[ch]
-        rows = [(cid, i, float(v)) for i, v in enumerate(values)]
+        rows = [
+            (cid, i, float(v),
+             str(stamps[i]) if stamps is not None and i < len(stamps) else None)
+            for i, v in enumerate(values)
+        ]
         for i in range(0, len(rows), batch):
             conn.executemany(
-                "INSERT INTO TelemetryReading (channel_id, timestep, value) "
-                "VALUES (?, ?, ?) ON CONFLICT(channel_id, timestep) DO NOTHING",
+                "INSERT INTO TelemetryReading (channel_id, timestep, value, "
+                "timestamp) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(channel_id, timestep) DO NOTHING",
                 rows[i:i + batch],
             )
         total += len(rows)
@@ -164,7 +176,7 @@ def store_readings(conn, channel_ids: dict[str, int], series: dict[str, list],
 
 
 def store_anomalies(conn, satellite_id: int, channel_ids: dict[str, int],
-                    anomalies, raise_alerts: bool = True) -> int:
+                    anomalies, raise_alerts: bool = True, stamps=None) -> int:
     """Write incidents plus their per-channel attribution.
 
     Each Anomaly row is one operator-facing incident; its AnomalyContribution
@@ -173,11 +185,14 @@ def store_anomalies(conn, satellite_id: int, channel_ids: dict[str, int],
     """
     written = 0
     for a in anomalies:
+        when = (str(stamps[min(a.start, len(stamps) - 1)])
+                if stamps is not None and len(stamps) else None)
         cur = conn.execute(
-            "INSERT INTO Anomaly (satellite_id, detected_at, ended_at, peak_at, "
-            "severity_score, status) VALUES (?, ?, ?, ?, ?, 'open') "
+            "INSERT INTO Anomaly (satellite_id, detected_at, detected_utc, "
+            "ended_at, peak_at, severity_score, status) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'open') "
             "ON CONFLICT(satellite_id, detected_at, severity_score) DO NOTHING",
-            (satellite_id, a.start, a.end, a.peak, a.severity),
+            (satellite_id, a.start, when, a.end, a.peak, a.severity),
         )
         if cur.rowcount == 0:
             row = conn.execute(
@@ -209,7 +224,7 @@ def store_anomalies(conn, satellite_id: int, channel_ids: dict[str, int],
 EXPLAIN_SQL = """
 SELECT  a.id                AS anomaly_id,
         s.name              AS satellite,
-        a.detected_at, a.ended_at, a.peak_at,
+        a.detected_at, a.detected_utc, a.ended_at, a.peak_at,
         a.severity_score, a.status,
         c.name              AS channel,
         c.subsystem,

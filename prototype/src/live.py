@@ -136,7 +136,8 @@ def load_frames(path) -> pd.DataFrame:
 
 def train_live(df: pd.DataFrame, channels: list[str], name: str,
                window: int = LIVE_WINDOW, epochs: int = LIVE_EPOCHS,
-               train_frac: float = 0.6, verbose: bool = True) -> dict:
+               train_frac: float = 0.6, verbose: bool = True,
+               parquet: str | None = None, block: str | None = None) -> dict:
     """Train one forecaster per live channel on the earliest frames.
 
     The split is chronological: the model learns from the oldest frames and is
@@ -156,8 +157,11 @@ def train_live(df: pd.DataFrame, channels: list[str], name: str,
     # Live frames carry no commanding information, so the command block is empty
     # and the model forecasts from telemetry history alone.
     cmds = np.zeros((len(df), 0), dtype=np.float32)
+    # The capture path and block are recorded so the dashboard and the database
+    # can reload exactly the series these models were fitted on.
     meta = {"satellite": name, "window": window, "frames": len(df),
-            "train_frames": cut, "channels": {}}
+            "train_frames": cut, "parquet": str(parquet) if parquet else None,
+            "block": block, "channels": {}}
 
     for i, ch in enumerate(channels, 1):
         values = df[ch].to_numpy(dtype=np.float32)[:cut]
@@ -253,7 +257,8 @@ if __name__ == "__main__":
 
     if not args.detect_only:
         print("\ntraining live forecasters")
-        train_live(df, chans, name, window=args.window, epochs=args.epochs)
+        train_live(df, chans, name, window=args.window, epochs=args.epochs,
+                   parquet=path, block=chosen["subsystem"])
 
     print("\ndetecting")
     result = detect_live(df, chans, name)

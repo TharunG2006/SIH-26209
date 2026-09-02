@@ -12,8 +12,8 @@ import sys
 
 import db
 from config import REPORT_DIR, SPACECRAFT
-from data import load_spacecraft
 from detect import detect
+from sources import get_source, list_sources, load_source, utc_for
 
 # NORAD catalogue numbers for the two benchmark spacecraft.  MSL is the cruise
 # stage's catalogue entry; the rover itself is on Mars and has no orbital
@@ -35,7 +35,12 @@ def tuned_config(spacecraft: str) -> dict:
 
 def populate(spacecraft: str, with_readings: bool = False,
              verbose: bool = True) -> dict:
-    cfg = tuned_config(spacecraft)
+    source = get_source(spacecraft)
+    if source is None:
+        raise KeyError(f"unknown source {spacecraft!r}")
+    # A live capture has no labelled anomalies, so the held-out configuration
+    # tuned on the benchmark does not apply to it; it runs on the defaults.
+    cfg = tuned_config(spacecraft) if source.has_labels else {}
     if cfg:
         detect.__globals__["PRUNE_DROP"] = cfg.get("prune_drop",
                                                    detect.__globals__["PRUNE_DROP"])
@@ -44,26 +49,30 @@ def populate(spacecraft: str, with_readings: bool = False,
         detect.__globals__["THRESHOLD_SIGNAL"] = cfg.get(
             "threshold_signal", detect.__globals__["THRESHOLD_SIGNAL"])
 
-    bundle = load_spacecraft(spacecraft)
-    result = detect(bundle, min_run=cfg.get("min_run", 5))
+    bundle, stamps = load_source(spacecraft)
+    result = detect(bundle, min_run=cfg.get("min_run", 5 if source.has_labels else 3))
 
     meta = CATALOGUE.get(spacecraft, {})
     with db.connect() as conn:
-        sat_id = db.upsert_satellite(conn, spacecraft, meta.get("norad_id"),
-                                     meta.get("launch_date"))
+        sat_id = db.upsert_satellite(
+            conn, spacecraft,
+            meta.get("norad_id") or source.norad_id,
+            meta.get("launch_date"))
         channel_ids = db.upsert_channels(conn, sat_id, result["channels"])
         n_read = 0
         if with_readings:
             series = {ch: bundle.full_test[ch] for ch in result["channels"]}
-            n_read = db.store_readings(conn, channel_ids, series)
+            # Live frames carry a real UTC clock; the benchmark ships only
+            # reading indices, which is why the schema keeps both columns.
+            n_read = db.store_readings(conn, channel_ids, series, stamps=stamps)
         n_anom = db.store_anomalies(conn, sat_id, channel_ids,
-                                    result["anomalies"])
+                                    result["anomalies"], stamps=stamps)
 
-    out = {"spacecraft": spacecraft, "channels": len(channel_ids),
-           "anomalies_written": n_anom, "readings_written": n_read,
-           "config": cfg or "defaults"}
+    out = {"spacecraft": spacecraft, "kind": source.kind,
+           "channels": len(channel_ids), "anomalies_written": n_anom,
+           "readings_written": n_read, "config": cfg or "defaults"}
     if verbose:
-        print(f"[{spacecraft}] {out['channels']} channels, "
+        print(f"[{spacecraft}] {source.kind}: {out['channels']} channels, "
               f"{n_anom} anomalies, {n_read:,} readings")
     return out
 
@@ -95,7 +104,9 @@ def show(anomaly_id: int) -> None:
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--spacecraft", default="all", choices=["all", *SPACECRAFT])
+    ap.add_argument("--spacecraft", default="all",
+                    help="a source key from `python src/sources.py`, "
+                         "'all', or 'live' for just the SatNOGS captures")
     ap.add_argument("--with-readings", action="store_true",
                     help="also persist raw telemetry (slower, ~250k rows)")
     ap.add_argument("--show", type=int, metavar="ANOMALY_ID",
@@ -116,7 +127,12 @@ if __name__ == "__main__":
                       f"first={r['first_mover']:6s} largest={r['largest_contributor']}")
         raise SystemExit(0)
 
-    targets = list(SPACECRAFT) if args.spacecraft == "all" else [args.spacecraft]
+    if args.spacecraft == "all":
+        targets = [s.key for s in list_sources()]
+    elif args.spacecraft == "live":
+        targets = [s.key for s in list_sources() if s.is_live]
+    else:
+        targets = [args.spacecraft]
     for sc in targets:
         populate(sc, with_readings=args.with_readings)
 
