@@ -252,15 +252,25 @@ def build_series(norad_id: int, days: int = 30, workers: int = 8,
               f"with frames, decoder {dec!r}")
 
     # Each frame is one HTTP request, so an unbounded fetch over a month of
-    # observations would mean tens of thousands of them.  Newest first, capped.
+    # observations means tens of thousands of them.  Observations are therefore
+    # submitted in batches and the cap is checked between batches: `pool.map`
+    # queues every task up front, so breaking out of its result loop stops us
+    # collecting but not downloading - the executor still drains the whole
+    # backlog on exit, which defeats the point of having a cap at all.
     rows: list[dict] = []
-    with ThreadPoolExecutor(workers) as pool:
-        for batch in pool.map(lambda o: decode_observation(o, cls), obs):
-            rows.extend(batch)
-            if len(rows) >= max_frames:
-                if verbose:
-                    print(f"  reached the {max_frames}-frame cap", flush=True)
-                break
+    for i in range(0, len(obs), workers):
+        chunk = obs[i:i + workers]
+        with ThreadPoolExecutor(workers) as pool:
+            for batch in pool.map(lambda o: decode_observation(o, cls), chunk):
+                rows.extend(batch)
+        if len(rows) >= max_frames:
+            if verbose:
+                print(f"  reached the {max_frames}-frame cap after "
+                      f"{i + len(chunk)} of {len(obs)} observations", flush=True)
+            break
+        if verbose and (i // workers) % 10 == 0:
+            print(f"    {len(rows)} frames from {i + len(chunk)} observations",
+                  flush=True)
     if not rows:
         raise ValueError("no frames decoded - the satellite may be transmitting "
                          "a mode this decoder does not cover")
