@@ -21,8 +21,26 @@ stage() {
 }
 
 say "waiting for the 82-channel retrain to finish"
-# The retrain writes its metadata file last, so its presence means done.
-while [ ! -f ../models/msl_channels.json ] || [ ! -f ../models/smap_channels.json ]; do
+# The metadata file's mere existence is not enough: one is left behind by every
+# previous run, so the gate fired instantly against stale 48-channel results.
+# Wait until the saved checkpoints actually cover every channel the config lists.
+while true; do
+  ready=$(python - <<'PY'
+import json, pathlib, sys
+sys.path.insert(0, ".")
+try:
+    from config import MODEL_DIR, SPACECRAFT
+except Exception:
+    print("no"); raise SystemExit
+for sc, spec in SPACECRAFT.items():
+    d = MODEL_DIR / f"{sc.lower()}_channels"
+    have = len(list(d.glob("*.pt"))) if d.is_dir() else 0
+    if have < len(spec["channels"]):
+        print("no"); raise SystemExit
+print("yes")
+PY
+)
+  [ "$ready" = "yes" ] && break
   sleep 60
 done
 say "retrain complete: $(ls ../models/smap_channels/*.pt 2>/dev/null | wc -l) SMAP + $(ls ../models/msl_channels/*.pt 2>/dev/null | wc -l) MSL models"
