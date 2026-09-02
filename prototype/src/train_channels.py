@@ -45,7 +45,10 @@ CH_STRIDE = 4
 # A CPU LSTM barely benefits from extra intra-op threads at this batch size, so
 # the machine is used far better by training several channels side by side with
 # a couple of threads each than by training one channel with all of them.
-WORKERS = max(1, min(8, (os.cpu_count() or 4) // 2))
+# Fewer workers than cores. Each holds a full-length series plus its model, and
+# with eight of them a worker was killed outright mid-run (BrokenProcessPool)
+# after 54 of 82 channels - the pool gives no warning before that happens.
+WORKERS = max(1, min(5, (os.cpu_count() or 4) // 3))
 THREADS_PER_WORKER = 2
 
 
@@ -132,7 +135,7 @@ def _train_one(job):
 
 
 def train_spacecraft_channels(name: str, epochs: int = CH_EPOCHS,
-                              verbose: bool = True) -> dict:
+                              verbose: bool = True, force: bool = False) -> dict:
     bundle = load_spacecraft(name)
     out_dir = MODEL_DIR / f"{name.lower()}_channels"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -141,27 +144,58 @@ def train_spacecraft_channels(name: str, epochs: int = CH_EPOCHS,
     # which only covers the subset that shares a timeline. A channel with a
     # short excerpt gets a proportionally shorter window so it still has enough
     # training samples to learn from.
-    jobs = []
+    # Skip channels already on disk. A long run is worth resuming rather than
+    # restarting: a crash at channel 54 should cost one model, not fifty-four.
+    jobs, skipped = [], 0
     for ch in bundle.channels:
+        if not force and (out_dir / f"{ch}.pt").exists():
+            skipped += 1
+            continue
         values = bundle.full_train[ch]
         cmds = bundle.full_train_cmd[ch]
         window = min(WINDOW, max(24, len(values) // 4))
         jobs.append((ch, values, cmds, epochs, window))
+    if verbose and skipped:
+        print(f"  {skipped} channels already trained, {len(jobs)} to go",
+              flush=True)
 
     meta = {"spacecraft": name, "window": WINDOW, "hidden": CH_HIDDEN,
             "stride": CH_STRIDE, "workers": WORKERS, "channels": {}}
     t0 = time.time()
     done = 0
-    with cf.ProcessPoolExecutor(max_workers=WORKERS) as pool:
-        for ch, state, scal, vl, window in pool.map(_train_one, jobs):
-            torch.save({"channel": ch, "model": state, "scaler": scal,
-                        "window": window, "n_cmd": 24},
-                       out_dir / f"{ch}.pt")
-            meta["channels"][ch] = {"val_mse": vl, "window": window}
-            done += 1
+    def run(batch, workers):
+        """Train a batch, returning whatever completed before any failure."""
+        nonlocal done
+        with cf.ProcessPoolExecutor(max_workers=workers) as pool:
+            for ch, state, scal, vl, window in pool.map(_train_one, batch):
+                torch.save({"channel": ch, "model": state, "scaler": scal,
+                            "window": window, "n_cmd": 24},
+                           out_dir / f"{ch}.pt")
+                meta["channels"][ch] = {"val_mse": vl, "window": window}
+                done += 1
+                if verbose:
+                    print(f"  [{done:2d}/{len(jobs)}] {ch:6s} val MSE {vl:.5f}",
+                          flush=True)
+
+    # Submit in chunks so a pool that dies takes one chunk with it, not the
+    # whole run, and fall back to a single worker for anything that failed.
+    remaining = list(jobs)
+    for i in range(0, len(jobs), WORKERS * 2):
+        chunk = jobs[i:i + WORKERS * 2]
+        try:
+            run(chunk, WORKERS)
+            remaining = [j for j in remaining if j not in chunk]
+        except cf.process.BrokenProcessPool:
             if verbose:
-                print(f"  [{done:2d}/{len(jobs)}] {ch:6s} val MSE {vl:.5f}",
+                print("  worker pool died - retrying this chunk serially",
                       flush=True)
+            for job in chunk:
+                if (out_dir / f"{job[0]}.pt").exists():
+                    continue
+                try:
+                    run([job], 1)
+                except Exception as exc:
+                    print(f"  SKIP {job[0]}: {type(exc).__name__}", flush=True)
 
     meta["seconds"] = round(time.time() - t0, 1)
     (MODEL_DIR / f"{name.lower()}_channels.json").write_text(
@@ -176,7 +210,9 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--spacecraft", default="all", choices=["all", *SPACECRAFT])
     ap.add_argument("--epochs", type=int, default=CH_EPOCHS)
+    ap.add_argument("--force", action="store_true",
+                    help="retrain channels that already have a checkpoint")
     args = ap.parse_args()
     for sc in (list(SPACECRAFT) if args.spacecraft == "all" else [args.spacecraft]):
         print(f"[{sc}] training per-channel forecasters")
-        train_spacecraft_channels(sc, epochs=args.epochs)
+        train_spacecraft_channels(sc, epochs=args.epochs, force=args.force)
