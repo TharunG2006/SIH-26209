@@ -188,15 +188,20 @@ def make_windows(
     Returns (X, y, t) where X is (N, window, C+24), y is (N, C) and t holds the
     index in the original series that each target corresponds to.
     """
-    feats = np.concatenate([values, cmds], axis=1)
+    feats = np.ascontiguousarray(np.concatenate([values, cmds], axis=1),
+                                 dtype=np.float32)
     n = len(values) - window
     if n <= 0:
         raise ValueError(f"series of length {len(values)} is shorter than window {window}")
-    idx = np.arange(n)
-    X = np.stack([feats[i : i + window] for i in idx])
+    # A strided view rather than a stack of copies: materialising every window
+    # for SMAP allocates ~400 MB, which fails outright when the machine is also
+    # training models. The view costs nothing; callers copy per batch.
+    X = np.lib.stride_tricks.sliding_window_view(
+        feats, window, axis=0
+    )[:n].transpose(0, 2, 1)
     y = values[window:]
-    t = idx + window
-    return X.astype(np.float32), y.astype(np.float32), t
+    t = np.arange(n) + window
+    return X, y.astype(np.float32), t
 
 
 if __name__ == "__main__":

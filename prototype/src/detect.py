@@ -215,7 +215,10 @@ def forecast(net, scaler, values: np.ndarray, cmds: np.ndarray,
     preds = []
     with torch.no_grad():
         for i in range(0, len(X), batch):
-            preds.append(net(torch.from_numpy(X[i:i + batch])).numpy())
+            # X is a strided view, so each batch is copied here rather than the
+            # whole array being materialised up front.
+            chunk = np.ascontiguousarray(X[i:i + batch], dtype=np.float32)
+            preds.append(net(torch.from_numpy(chunk)).numpy())
     y_pred = scaler.inverse(np.concatenate(preds))
     y_true = scaler.inverse(y)
     return y_true, y_pred, t
