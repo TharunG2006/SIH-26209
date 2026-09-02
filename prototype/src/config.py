@@ -30,7 +30,7 @@ SPACECRAFT = {
             "E-10", "E-11", "E-12", "E-13", "E-2", "E-3", "E-4",
             "E-5", "E-6", "E-7", "E-8", "E-9", "F-1", "F-2", "F-3",
             "G-1", "G-2", "G-3", "G-4", "G-6", "G-7", "P-1", "P-2",
-            "P-2", "P-3", "P-4", "P-7", "R-1", "S-1", "T-1", "T-2",
+            "P-3", "P-4", "P-7", "R-1", "S-1", "T-1", "T-2",
             "T-3"
         ],
         # The subset covering a common window, which is all the joint
@@ -62,6 +62,29 @@ SPACECRAFT = {
         ],
     },
 }
+
+def _dedupe(seq):
+    """Preserve order, drop repeats.
+
+    NASA's labeled_anomalies.csv lists P-2 twice. A duplicated channel is not
+    cosmetic: it would be forecast twice and emit each of its detections twice,
+    inflating both the detection count and the false-alarm count, and it makes
+    the number of trained models permanently one short of the number expected -
+    which is enough to stall a pipeline that waits for training to finish.
+    """
+    seen, out = set(), []
+    for x in seq:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
+for _spec in SPACECRAFT.values():
+    _spec["channels"] = _dedupe(_spec["channels"])
+    if "aligned" in _spec:
+        _spec["aligned"] = _dedupe(_spec["aligned"])
+
 
 # Default subsystem group names.  These are deliberately neutral: the leading
 # letter of a telemanom channel id is an anonymised group tag, NOT a documented
