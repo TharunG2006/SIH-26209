@@ -1,0 +1,38 @@
+{
+  "satellite": "GRBBeta",
+  "window": 32,
+  "frames": 823,
+  "train_frames": 493,
+  "channels": {
+    "psu_pv_in_volt3": {
+      "val_mse": 0.19388142228126526
+    },
+    "psu_pv_in_volt2": {
+      "val_mse": 0.42021965980529785
+    },
+    "psu_pv_in_volt1": {
+      "val_mse": 0.4334009885787964
+    },
+    "psu_pv_in_power2": {
+      "val_mse": 0.2953953742980957
+    },
+    "psu_pv_in_power3": {
+      "val_mse": 0.013020280748605728
+    },
+    "psu_pv_in_power1": {
+      "val_mse": 0.24772660434246063
+    },
+    "psu_out_sys_ch_amp6": {
+      "val_mse": 1.071866512298584
+    },
+    "psu_pv_in_amp2": {
+      "val_mse": 0.2666698396205902
+    },
+    "psu_bat_amp_charge": {
+      "val_mse": 0.2979457676410675
+    },
+    "psu_pv_in_amp3": {
+      "val_mse": 0.010845416225492954
+    }
+  }
+}

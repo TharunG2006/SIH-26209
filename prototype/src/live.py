@@ -37,8 +37,55 @@ LIVE_EPOCHS = 30
 
 # Fields that are structurally uninformative about spacecraft health.
 METADATA_FIELDS = {"observation_id", FRAME_INDEX, "timestamp"}
-COUNTER_HINTS = ("_ct", "count", "seq", "time_since", "sec_in", "time_stamp",
-                 "sub_seconds", "packet_length", "process_id")
+COUNTER_HINTS = ("_ct", "count", "cnt", "seq", "time_since", "sec_in",
+                 "time_stamp", "sub_seconds", "packet_length", "process_id",
+                 "uptime", "boot")
+
+# Transport and framing metadata. A decoded frame carries the packet routing
+# layer alongside the payload: CubeSat Space Protocol headers, AX.25 callsigns,
+# CCSDS framing. These describe how the packet travelled, not how the satellite
+# is doing, and they are present in nearly every frame - so a naive
+# "pick the best-covered fields" rule selects them and nothing else. Detecting a
+# change in csp_hdr_source means packets began arriving from a different onboard
+# address; it is not a fault.
+PROTOCOL_PREFIXES = ("csp_hdr", "csp_", "ax25", "ccsds", "dest_callsign",
+                     "src_callsign", "src_ssid", "dest_ssid", "framelength",
+                     "ctl", "pid", "packet_type", "grouping_flag",
+                     "secondary_header", "application_process")
+
+
+def _is_protocol(col: str) -> bool:
+    c = col.lower()
+    return any(c.startswith(p) or c == p for p in PROTOCOL_PREFIXES)
+
+
+def channel_blocks(df: pd.DataFrame, min_frames: int = 200) -> list[dict]:
+    """Group columns into the frame types that actually carry them.
+
+    A satellite interleaves several beacon formats, each carrying a different
+    block of fields, and each block is therefore present in only a fraction of
+    frames - on GRBBeta the power block appears in 12% and the radio block in
+    2.5%. Selecting fields by overall coverage picks whatever is in every frame,
+    which is the protocol header, and discards all the real telemetry.
+
+    Columns are grouped by their name prefix, which is how these decoders label
+    subsystems (`psu_`, `uhf_`, `bcn_adcs_`), and each group is reported with
+    the number of frames carrying it intact.
+    """
+    groups: dict[str, list[str]] = {}
+    for c in df.columns:
+        if c in METADATA_FIELDS or _is_protocol(c):
+            continue
+        prefix = c.split("_")[0]
+        groups.setdefault(prefix, []).append(c)
+
+    blocks = []
+    for prefix, cols in groups.items():
+        present = df[cols].notna().all(axis=1).sum()
+        if present >= min_frames:
+            blocks.append({"subsystem": prefix, "channels": cols,
+                           "frames": int(present)})
+    return sorted(blocks, key=lambda b: b["frames"], reverse=True)
 
 
 def complete_frames(df: pd.DataFrame, channels: list[str]) -> pd.DataFrame:
@@ -68,7 +115,9 @@ def health_channels(df: pd.DataFrame, min_unique: int = 8,
     """
     out = []
     for c in usable_channels(df, min_unique=min_unique):
-        if c in METADATA_FIELDS or any(h in c.lower() for h in COUNTER_HINTS):
+        if c in METADATA_FIELDS or _is_protocol(c):
+            continue
+        if any(h in c.lower() for h in COUNTER_HINTS):
             continue
         if df[c].notna().mean() < min_coverage:
             continue          # present in too few frames to model
@@ -153,6 +202,8 @@ if __name__ == "__main__":
     ap.add_argument("--epochs", type=int, default=LIVE_EPOCHS)
     ap.add_argument("--max-channels", type=int, default=16,
                     help="cap on channels to train, most variable first")
+    ap.add_argument("--block", help="subsystem block to model (default: the "
+                                    "one with the most complete frames)")
     ap.add_argument("--detect-only", action="store_true")
     args = ap.parse_args()
 
@@ -166,16 +217,39 @@ if __name__ == "__main__":
     name = re.sub(r"_\d+$", "", str(path).split("\\")[-1].split("/")[-1][:-8])
 
     df = load_frames(path)
-    chans = health_channels(df)
+    raw_frames = len(df)
+
+    blocks = channel_blocks(df)
+    if not blocks:
+        raise SystemExit("no subsystem block has enough complete frames to model")
+    if args.block:
+        chosen = next((b for b in blocks if b["subsystem"] == args.block), None)
+        if chosen is None:
+            raise SystemExit(f"no block named {args.block!r}; available: "
+                             + ", ".join(b["subsystem"] for b in blocks))
+    else:
+        chosen = blocks[0]
+
+    print(f"{name}: {raw_frames} frames decoded")
+    print("subsystem blocks found:")
+    for b in blocks:
+        mark = " <- using" if b is chosen else ""
+        print(f"   {b['subsystem']:8s} {b['frames']:5d} complete frames, "
+              f"{len(b['channels']):3d} channels{mark}")
+
+    df = complete_frames(df, chosen["channels"])
+    chans = [c for c in health_channels(df, min_coverage=0.9)
+             if c in chosen["channels"]]
     # Prefer the most variable channels: a near-flat signal contributes little
     # and each extra channel is another model to train.
     chans = sorted(chans, key=lambda c: df[c].std(), reverse=True)[:args.max_channels]
-    raw_frames = len(df)
-    df = complete_frames(df, chans)
-    print(f"{name}: {raw_frames} frames decoded, {len(df)} carry the selected "
-          f"channels, {len(chans)} health channels")
+    if not chans:
+        raise SystemExit(f"block {chosen['subsystem']!r} has no varying "
+                         "health channels once counters are removed")
+    print(f"\n{len(df)} frames in the {chosen['subsystem']!r} block, "
+          f"{len(chans)} health channels selected:")
     for c in chans:
-        print(f"   {c:38s} std={df[c].std():.4g}")
+        print(f"   {c:42s} std={df[c].std():.4g}")
 
     if not args.detect_only:
         print("\ntraining live forecasters")
