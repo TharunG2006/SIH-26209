@@ -377,20 +377,43 @@ def channel_events(z: np.ndarray, channels: list[str], z_min: float | None = Non
     sensitivity slider); left as None, each channel gets its own dynamic
     threshold and its sequences are pruned.
     """
-    signal = z if (THRESHOLD_SIGNAL == "z" or err is None) else err
+    # "both" takes the union of what each signal flags. The raw error and its
+    # robust z-score fail differently - the error's variance is inflated by
+    # outliers elsewhere in the series, while the z-score can flatten a channel
+    # whose errors are uniformly large - and which one wins turns out to be
+    # mission-dependent. Taking either lets a channel be caught by whichever
+    # view sees it, instead of committing every channel to one.
+    if err is None:
+        signals = [z]
+    elif THRESHOLD_SIGNAL == "z":
+        signals = [z]
+    elif THRESHOLD_SIGNAL == "both":
+        signals = [err, z]
+    else:
+        signals = [err]
+
     events = []
     for j, ch in enumerate(channels):
-        col = signal[:, j]
-        valid = np.flatnonzero(~np.isnan(col))
-        if valid.size == 0:
-            continue
-        col = col[: valid[-1] + 1]
         if z_min is None:
-            eps = dynamic_threshold(col, min_run, merge_gap)
-            seqs = prune_sequences(
-                find_sequences(col > eps, min_run, merge_gap), col, eps
-            )
+            flagged = np.zeros(z.shape[0], dtype=bool)
+            for sig in signals:
+                col = sig[:, j]
+                valid = np.flatnonzero(~np.isnan(col))
+                if valid.size == 0:
+                    continue
+                col = col[: valid[-1] + 1]
+                eps = dynamic_threshold(col, min_run, merge_gap)
+                kept = prune_sequences(
+                    find_sequences(col > eps, min_run, merge_gap), col, eps
+                )
+                for a, b_ in kept:
+                    flagged[a:b_ + 1] = True
+            seqs = find_sequences(flagged, min_run, merge_gap)
         else:
+            col = z[:, j]
+            valid = np.flatnonzero(~np.isnan(col))
+            if valid.size == 0:
+                continue
             # Use the same valid-length slice as the dynamic branch rather than
             # relying on NaN comparisons happening to be False in the padding.
             seqs = find_sequences(z[: valid[-1] + 1, j] > z_min,

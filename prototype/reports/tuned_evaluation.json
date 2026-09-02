@@ -14,18 +14,42 @@
       "f1": 0.5
     },
     "held_out_result": {
+      "true_positives": 17,
+      "false_positives": 4,
+      "false_negatives": 21,
+      "n_predicted": 21,
+      "n_labelled": 37,
       "precision": 0.8095,
       "recall": 0.4324,
       "f1": 0.5637,
-      "n_predicted": 21,
-      "n_labelled": 37,
+      "incidents_shown_to_operator": 10,
+      "events_matched_to_labels": 10,
+      "top1_hits": 9,
+      "top3_hits": 9,
       "top1_channel_accuracy": 0.9,
       "top3_channel_accuracy": 0.9,
-      "events_matched_to_labels": 10,
+      "top1_95ci": [
+        0.5958,
+        0.9821
+      ],
+      "top3_95ci": [
+        0.5958,
+        0.9821
+      ],
       "forecast_mae": 0.16424205899238586,
-      "forecaster": "per-channel ensemble (full length)"
+      "z_min": "dynamic",
+      "min_run": 5,
+      "operational_precision": 1.0,
+      "operational_95ci": [
+        0.7225,
+        1.0
+      ],
+      "n_incidents": 10,
+      "incidents_during_a_real_fault": 10,
+      "forecaster": "per-channel ensemble (full length)",
+      "labels_unreachable": 0
     },
-    "n_configs_tried": 72
+    "n_configs_tried": 108
   },
   "MSL": {
     "tuned_on": "SMAP",
@@ -42,17 +66,41 @@
       "f1": 0.6224
     },
     "held_out_result": {
+      "true_positives": 10,
+      "false_positives": 6,
+      "false_negatives": 16,
+      "n_predicted": 16,
+      "n_labelled": 26,
       "precision": 0.625,
       "recall": 0.3846,
       "f1": 0.4762,
-      "n_predicted": 16,
-      "n_labelled": 26,
+      "incidents_shown_to_operator": 9,
+      "events_matched_to_labels": 7,
+      "top1_hits": 6,
+      "top3_hits": 6,
       "top1_channel_accuracy": 0.8571,
       "top3_channel_accuracy": 0.8571,
-      "events_matched_to_labels": 7,
+      "top1_95ci": [
+        0.4869,
+        0.9743
+      ],
+      "top3_95ci": [
+        0.4869,
+        0.9743
+      ],
       "forecast_mae": 0.7921653389930725,
-      "forecaster": "per-channel ensemble (full length)"
+      "z_min": "dynamic",
+      "min_run": 5,
+      "operational_precision": 0.7778,
+      "operational_95ci": [
+        0.4526,
+        0.9368
+      ],
+      "n_incidents": 9,
+      "incidents_during_a_real_fault": 7,
+      "forecaster": "per-channel ensemble (full length)",
+      "labels_unreachable": 0
     },
-    "n_configs_tried": 72
+    "n_configs_tried": 108
   }
 }

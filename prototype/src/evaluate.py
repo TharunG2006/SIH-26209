@@ -30,6 +30,24 @@ def _overlaps(a: tuple[int, int], b: tuple[int, int]) -> bool:
     return a[0] <= b[1] and b[0] <= a[1]
 
 
+def wilson_interval(hits: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """95% Wilson score interval for a proportion.
+
+    Attribution accuracy rests on a handful of matched events, and a bare "0.90"
+    invites the reader to assume a precision the sample cannot support. The
+    Wilson interval is used rather than the normal approximation because the
+    latter is badly behaved for small n and proportions near 1 - it happily
+    returns bounds above 1.
+    """
+    if n == 0:
+        return (0.0, 0.0)
+    p = hits / n
+    denom = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    spread = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / denom
+    return (round(max(0.0, centre - spread), 4), round(min(1.0, centre + spread), 4))
+
+
 def event_scores(predicted: list[tuple[int, int]],
                  truth: list[tuple[int, int]]) -> dict:
     """Event-level precision / recall / F1 with overlap matching."""
@@ -78,8 +96,12 @@ def attribution_accuracy(result: dict, bundle) -> dict:
             top3 += 1
     return {
         "events_matched_to_labels": matched,
+        "top1_hits": top1,
+        "top3_hits": top3,
         "top1_channel_accuracy": round(top1 / matched, 4) if matched else None,
         "top3_channel_accuracy": round(top3 / matched, 4) if matched else None,
+        "top1_95ci": wilson_interval(top1, matched),
+        "top3_95ci": wilson_interval(top3, matched),
     }
 
 
@@ -126,6 +148,36 @@ def channel_event_scores(result: dict, bundle, time_range=None) -> dict:
     }
 
 
+def operational_scores(result: dict, bundle, time_range=None) -> dict:
+    """Was the operator alerted while something was actually wrong?
+
+    The headline precision requires a detection to overlap a labelled window on
+    the *same* channel, which is the convention NASA's labels use and what makes
+    the figures comparable to telemanom. It is strict in a way that matters
+    operationally: flagging channel M-3 while NASA labelled M-6 during the same
+    fault counts as a false alarm, though the engineer was correctly told the
+    spacecraft was misbehaving right then.
+
+    This reports the looser question alongside it - did the incident coincide
+    with any labelled anomaly on any channel - so the gap between the two
+    numbers is visible rather than hidden. It is a weaker claim and must never
+    be quoted as the precision.
+    """
+    windows = [w for seqs in bundle.scorable_labels(
+        result.get("channel_lengths")).values() for w in seqs]
+    incidents = [(a.start, a.end) for a in result["anomalies"]
+                 if _in_range((a.start, a.end), time_range)]
+    if not incidents:
+        return {"operational_precision": None, "n_incidents": 0}
+    during = sum(any(_overlaps(i, w) for w in windows) for i in incidents)
+    return {
+        "operational_precision": round(during / len(incidents), 4),
+        "operational_95ci": wilson_interval(during, len(incidents)),
+        "n_incidents": len(incidents),
+        "incidents_during_a_real_fault": during,
+    }
+
+
 def evaluate(name: str, z_min: float | None = None, min_run: int = MIN_RUN,
              per_channel: bool | None = None, time_range=None) -> dict:
     """Score one spacecraft.
@@ -151,6 +203,7 @@ def evaluate(name: str, z_min: float | None = None, min_run: int = MIN_RUN,
     scores["z_min"] = "dynamic" if z_min is None else z_min
     scores["min_run"] = min_run
     scores["telemanom_baseline"] = TELEMANOM.get(name)
+    scores.update(operational_scores(result, bundle, time_range))
     scores["forecaster"] = result["forecaster"]
     scores["labels_unreachable"] = bundle.dropped_label_count(
         result.get("channel_lengths"))

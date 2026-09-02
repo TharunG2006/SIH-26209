@@ -214,3 +214,71 @@ and precision from 0.818 to 0.809, because sequences that only ever passed the
 length filter by spanning a gap are no longer counted. MSL improves (precision
 0.556 to 0.625, F1 0.455 to 0.476). The earlier figures were mildly inflated by
 the defect; these are the honest ones.
+
+
+## Reporting the uncertainty, and a second precision convention
+
+Three follow-ups, prompted by the three weakest points in the numbers above.
+
+### Attribution now carries a confidence interval
+
+The headline attribution figure rests on a handful of matched events, and a
+bare "0.90" invites a reader to assume a precision the sample cannot support.
+Every proportion is now reported with a 95% Wilson interval (Wilson rather than
+the normal approximation, which misbehaves badly for small n near 1 and will
+happily return bounds above 1):
+
+| | top-1 attribution | 95% CI | events |
+|---|---|---|---|
+| SMAP | 0.900 | [0.60, 0.98] | 10 |
+| MSL | 0.857 | [0.49, 0.97] | 7 |
+| **pooled** | **0.882** | **[0.66, 0.97]** | **17** |
+
+The pooled figure is the one to quote: same measurement, larger sample, so the
+interval is tighter. It should be stated as **"88% (95% CI 66-97%, n=17)"** and
+never as a bare percentage. The sample cannot be enlarged without more labelled
+missions - it is bounded by how many detections coincide with a labelled window,
+which is bounded in turn by recall.
+
+### Why MSL precision is lower, diagnosed
+
+MSL's 0.625 against SMAP's 0.809 is not random. Of MSL's false alarms,
+inspection shows most are not spurious alerts at all:
+
+* **D-15 (2151-2155)** misses its own channel's labelled window by 11 timesteps.
+* **M-3, M-5, M-1** each fire while NASA has labelled anomalies on *other*
+  channels at that moment - a real fault was underway and a neighbouring
+  channel was flagged.
+* Only **F-4** and **M-4** are genuinely isolated.
+
+The strict convention counts flagging M-3 while NASA labelled M-6 during the
+same fault as a false alarm, even though the engineer was correctly told the
+spacecraft was misbehaving right then. That strictness is deliberate and stays -
+it is what makes these numbers comparable to telemanom - but the gap it creates
+is now measured rather than left implicit.
+
+### Operational precision, reported alongside
+
+| | strict (headline) | operational | incidents |
+|---|---|---|---|
+| SMAP | 0.809 | 1.000, 95% CI [0.72, 1.00] | 10/10 |
+| MSL | 0.625 | 0.778, 95% CI [0.45, 0.94] | 7/9 |
+
+Operational precision asks whether an incident coincided with any labelled
+anomaly on any channel - whether the operator was alerted while something was
+genuinely wrong. Every SMAP incident was. **This is a weaker claim and must
+never be quoted as the precision**; it is reported so the distance between the
+two conventions is visible.
+
+### Recall: a third attempt, also rejected
+
+Taking the union of what each threshold signal flags - catching a channel by
+whichever view sees it, rather than committing every channel to one - was added
+as a third option and offered to the cross-mission tuner. **It was not
+selected**: both missions still chose the raw error alone. Recall stands at
+0.432 (SMAP) and 0.385 (MSL).
+
+That is now three approaches to recall that either did not help or did not
+survive out-of-sample selection. The honest conclusion is unchanged: closing
+this gap needs more labelled missions or a detector that does not rely on
+forecast error alone, not further tuning of this one.

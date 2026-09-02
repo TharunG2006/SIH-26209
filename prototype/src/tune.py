@@ -28,7 +28,7 @@ GRID = {
     # on its robust z-score.  Which one wins is mission-dependent, so it is
     # selected by the same cross-mission protocol as everything else rather
     # than picked by hand per spacecraft.
-    "threshold_signal": ["err", "z"],
+    "threshold_signal": ["err", "z", "both"],
 }
 
 
@@ -75,12 +75,10 @@ def tune(tune_on: str, report_on: str, verbose: bool = True) -> dict:
         "config_score_on_tuning_mission": {
             k: best[k] for k in ("precision", "recall", "f1")
         },
-        "held_out_result": {
-            k: held_out[k] for k in
-            ("precision", "recall", "f1", "n_predicted", "n_labelled",
-             "top1_channel_accuracy", "top3_channel_accuracy",
-             "events_matched_to_labels", "forecast_mae", "forecaster")
-        },
+        # Everything except the raw baseline block, so a metric added to
+        # evaluate() does not silently vanish from the report.
+        "held_out_result": {k: v for k, v in held_out.items()
+                            if k != "telemanom_baseline"},
         "n_configs_tried": len(trials),
     }
 
