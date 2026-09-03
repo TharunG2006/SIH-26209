@@ -256,11 +256,24 @@ def error_scores(y_true: np.ndarray, y_pred: np.ndarray,
         if valid.size:
             err[valid, j] = _ewma(diff[valid, j], smooth)
 
-    med = np.nanmedian(err, axis=0)
-    mad = np.nanmedian(np.abs(err - med), axis=0) * 1.4826
-    floor = np.maximum(0.05 * med, 0.05 * np.nanstd(err, axis=0))
+    # A channel can be entirely NaN - one too short for its own window, or one
+    # whose model failed to load - and taking a median over nothing warns and
+    # yields NaN. Such a channel simply has no score; say so deliberately rather
+    # than emitting a RuntimeWarning per statistic and carrying NaN onwards.
+    has_data = np.any(~np.isnan(err), axis=0)
+    med = np.zeros(err.shape[1], dtype=float)
+    mad = np.zeros_like(med)
+    spread = np.zeros_like(med)
+    if has_data.any():
+        sub = err[:, has_data]
+        med[has_data] = np.nanmedian(sub, axis=0)
+        mad[has_data] = np.nanmedian(np.abs(sub - med[has_data]), axis=0) * 1.4826
+        spread[has_data] = np.nanstd(sub, axis=0)
+
+    floor = np.maximum(0.05 * med, 0.05 * spread)
     scale = np.maximum(np.maximum(mad, floor), 1e-6)
     z = (err - med) / scale
+    z[:, ~has_data] = np.nan
     return err, z
 
 

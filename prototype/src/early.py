@@ -44,7 +44,7 @@ RANDOM_TRIALS_PER_ANOMALY = 5
 
 # ---------------------------------------------------------------- detectors --
 def cusum_alarm(err: np.ndarray, slack_k: float = 0.5,
-                threshold_h: float = 5.0) -> np.ndarray:
+                threshold_h: float = 5.0, clip: float = 3.0) -> np.ndarray:
     """Cumulative-sum drift alarm.
 
     Standardise the error against its own median and spread, subtract a slack
@@ -52,11 +52,19 @@ def cusum_alarm(err: np.ndarray, slack_k: float = 0.5,
     resets to zero whenever the error drops back to baseline, so it only grows
     under a *persistent* upward shift - the signature of something degrading
     rather than something momentarily odd.
+
+    Each step's contribution is clipped. Without it a single extreme reading
+    drives the accumulator so high that it takes hundreds of readings to decay
+    below the threshold, so one spike raises a longer alarm than genuine
+    sustained drift - the opposite of what this detector is for. Clipping makes
+    it respond to how *persistently* the error is elevated rather than to how
+    far any one reading strays, which is the whole point of using CUSUM instead
+    of a threshold.
     """
     med = np.median(err)
     mad = np.median(np.abs(err - med)) * 1.4826
     scale = max(mad, 1e-9)
-    z = (err - med) / scale
+    z = np.clip((err - med) / scale, -clip, clip)
 
     s = np.zeros_like(z)
     acc = 0.0

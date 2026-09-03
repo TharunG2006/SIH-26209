@@ -10,8 +10,8 @@
       ],
       "fires_at_random": 0.8471,
       "lift": 0.972,
-      "median_lead": 500,
-      "mean_lead": 444.9,
+      "median_lead": 494,
+      "mean_lead": 443.9,
       "is_early_warning": false
     },
     "trend": {
@@ -55,7 +55,7 @@
       "fires_at_random": 0.8533,
       "lift": 0.879,
       "median_lead": 500,
-      "mean_lead": 408.3,
+      "mean_lead": 406.2,
       "is_early_warning": false
     },
     "trend": {

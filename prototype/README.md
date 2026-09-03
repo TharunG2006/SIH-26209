@@ -109,3 +109,17 @@ inside the retained range.
 See `reports/evaluation.json` for current numbers, and the notes in
 `reports/RESULTS.md` for how they compare to the telemanom baseline and what
 the remaining gaps are.
+
+## Tests
+
+```bash
+python -m pytest prototype/tests -q
+```
+
+40 regression tests. Each one corresponds to a defect that actually occurred
+here, written against the specific wrong behaviour rather than as generic
+coverage — because the failures that mattered in this project were not crashes.
+They produced plausible numbers that were wrong: a "60σ anomaly" in a network
+packet header, a noise filter that never fired, anomalies scored as missed in
+data that was never loaded. A reading of the code did not catch those; a test
+does.
