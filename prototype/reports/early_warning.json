@@ -1,0 +1,90 @@
+{
+  "SMAP": {
+    "cusum": {
+      "warned": 56,
+      "of": 68,
+      "rate": 0.8235,
+      "rate_95ci": [
+        0.7164,
+        0.8961
+      ],
+      "fires_at_random": 0.8471,
+      "lift": 0.972,
+      "median_lead": 500,
+      "mean_lead": 444.9,
+      "is_early_warning": false
+    },
+    "trend": {
+      "warned": 49,
+      "of": 68,
+      "rate": 0.7206,
+      "rate_95ci": [
+        0.6044,
+        0.8132
+      ],
+      "fires_at_random": 0.6971,
+      "lift": 1.034,
+      "median_lead": 429,
+      "mean_lead": 377.0,
+      "is_early_warning": false
+    },
+    "volatility": {
+      "warned": 14,
+      "of": 68,
+      "rate": 0.2059,
+      "rate_95ci": [
+        0.1268,
+        0.3164
+      ],
+      "fires_at_random": 0.2147,
+      "lift": 0.959,
+      "median_lead": 372,
+      "mean_lead": 359.5,
+      "is_early_warning": false
+    }
+  },
+  "MSL": {
+    "cusum": {
+      "warned": 27,
+      "of": 36,
+      "rate": 0.75,
+      "rate_95ci": [
+        0.5893,
+        0.8625
+      ],
+      "fires_at_random": 0.8533,
+      "lift": 0.879,
+      "median_lead": 500,
+      "mean_lead": 408.3,
+      "is_early_warning": false
+    },
+    "trend": {
+      "warned": 24,
+      "of": 36,
+      "rate": 0.6667,
+      "rate_95ci": [
+        0.5033,
+        0.7979
+      ],
+      "fires_at_random": 0.8,
+      "lift": 0.833,
+      "median_lead": 327,
+      "mean_lead": 291.2,
+      "is_early_warning": false
+    },
+    "volatility": {
+      "warned": 15,
+      "of": 36,
+      "rate": 0.4167,
+      "rate_95ci": [
+        0.2714,
+        0.578
+      ],
+      "fires_at_random": 0.4867,
+      "lift": 0.856,
+      "median_lead": 212,
+      "mean_lead": 252.1,
+      "is_early_warning": false
+    }
+  }
+}
