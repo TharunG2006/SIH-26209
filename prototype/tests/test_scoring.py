@@ -193,3 +193,40 @@ class TestFactorCalibration:
         drift[200:] += 0.6                      # small, persistent
 
         assert early.cusum_alarm(drift).sum() > early.cusum_alarm(spike).sum()
+
+
+class TestNoveltyDetector:
+    """Detection against the training distribution rather than the forecast."""
+
+    def test_a_sustained_level_shift_is_caught(self):
+        # The case forecast error is blind to: an LSTM learns to follow a
+        # persistent shift, so its error collapses while the channel sits far
+        # from where it ever operated in training.
+        import novelty
+        rng = np.random.default_rng(0)
+        train = rng.normal(10.0, 0.2, 1000)
+        test = rng.normal(10.0, 0.2, 1000)
+        test[500:] += 4.0                      # moved, and stays moved
+        score = novelty.shift_score(test, train, window=60)
+        assert score[:400].max() < 4.0
+        assert score[700:].max() > 8.0
+
+    def test_a_brief_spike_does_not_register(self):
+        # Transients are the forecaster's job; a rolling median must not be
+        # dragged by a handful of readings.
+        import novelty
+        rng = np.random.default_rng(1)
+        train = rng.normal(10.0, 0.2, 1000)
+        test = rng.normal(10.0, 0.2, 1000)
+        test[500:505] += 50.0
+        assert novelty.shift_score(test, train, window=60).max() < 4.0
+
+    def test_a_channel_constant_in_training_is_still_scorable(self):
+        # A zero MAD would divide by nothing; a channel that never moved during
+        # training and later does is exactly what we want to catch.
+        import novelty
+        train = np.full(500, 3.0)
+        test = np.concatenate([np.full(300, 3.0), np.full(300, 9.0)])
+        score = novelty.shift_score(test, train, window=60)
+        assert np.isfinite(score).all()
+        assert score[400:].max() > 0

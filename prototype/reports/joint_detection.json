@@ -1,0 +1,42 @@
+{
+  "SMAP": {
+    "spacecraft": "SMAP",
+    "labelled_windows": 65,
+    "per_channel": {
+      "precision": 1.0,
+      "recall": 0.8308,
+      "f1": 0.9076,
+      "n_detections": 12
+    },
+    "joint": {
+      "precision": 1.0,
+      "recall": 0.1692,
+      "f1": 0.2895,
+      "n_detections": 1,
+      "quantile": 0.995
+    },
+    "found_only_by_joint": 0,
+    "found_by_both": 11,
+    "union_recall": 0.8308
+  },
+  "MSL": {
+    "spacecraft": "MSL",
+    "labelled_windows": 34,
+    "per_channel": {
+      "precision": 0.8571,
+      "recall": 0.4706,
+      "f1": 0.6076,
+      "n_detections": 7
+    },
+    "joint": {
+      "precision": 1.0,
+      "recall": 0.2059,
+      "f1": 0.3415,
+      "n_detections": 1,
+      "quantile": 0.995
+    },
+    "found_only_by_joint": 0,
+    "found_by_both": 7,
+    "union_recall": 0.4706
+  }
+}
