@@ -31,8 +31,17 @@ import numpy as np
 
 from config import MERGE_GAP, MIN_RUN, REPORT_DIR, SPACECRAFT
 
-# Sustained shift required, in training-MAD units, before a channel counts as
-# operating outside its learned envelope.
+# Multiple of a channel's own natural wander, measured during training, before
+# it counts as operating outside its learned envelope.
+#
+# An absolute sigma threshold does not transfer between missions: the value
+# chosen on SMAP (3.0) collapsed MSL's precision from 0.889 to 0.291, because
+# what counts as "far from normal" depends on how much a channel drifts during
+# healthy operation, and that differs per channel and per spacecraft. Scaling
+# each channel by its own training-time wander removes that dependence.
+DEFAULT_MARGIN = 1.5
+
+# Retained for callers that still pass an absolute threshold.
 DEFAULT_SHIFT = 4.0
 
 # Readings the shift must persist for. A level change is a slow thing; anything
@@ -71,32 +80,57 @@ def shift_score(test: np.ndarray, train: np.ndarray,
     return out
 
 
+def natural_wander(train: np.ndarray, window: int = DEFAULT_WINDOW,
+                   quantile: float = 0.99) -> float:
+    """How far this channel drifts from its own centre during healthy operation.
+
+    The same rolling-median statistic applied to the training data, which by
+    definition contains no labelled fault. Its high quantile is the channel's
+    own answer to "how far do I normally wander", which is what an absolute
+    threshold was guessing at globally and getting wrong per mission.
+    """
+    score = shift_score(train, train, window)
+    valid = score[window - 1:] if len(score) > window else score
+    if valid.size == 0:
+        return 1.0
+    return max(float(np.quantile(valid, quantile)), 1e-6)
+
+
 def channel_events(bundle, channels, offset: int, n_rows: int,
-                   shift: float = DEFAULT_SHIFT,
+                   shift: float | None = None,
                    window: int = DEFAULT_WINDOW,
                    min_run: int = MIN_RUN,
-                   merge_gap: int = MERGE_GAP) -> list[dict]:
-    """Per-channel detections from distributional shift alone."""
+                   merge_gap: int = MERGE_GAP,
+                   margin: float = DEFAULT_MARGIN) -> list[dict]:
+    """Per-channel detections from distributional shift alone.
+
+    With `shift` given, that absolute threshold is used for every channel. Left
+    as None, each channel is compared against `margin` times its own training
+    wander - which is what lets one setting work across missions.
+    """
     from detect import find_sequences
 
     events = []
     for ch in channels:
         train = bundle.full_train.get(ch)
         test = bundle.full_test.get(ch)
-        if train is None or test is None or len(train) < 10:
+        if train is None or test is None or len(train) < window + 10:
             continue
         score = shift_score(test, train, window)
-        for s, e in find_sequences(score > shift, min_run, merge_gap):
+        thr = shift if shift is not None else margin * natural_wander(train, window)
+        for s, e in find_sequences(score > thr, min_run, merge_gap):
             events.append({
                 "channel": ch,
                 "start": int(s), "end": int(e),
                 "peak_shift": float(score[s:e + 1].max()),
+                "threshold": float(thr),
             })
     return events
 
 
-def evaluate_union(name: str, shift: float = DEFAULT_SHIFT,
-                   window: int = DEFAULT_WINDOW, verbose: bool = True) -> dict:
+def evaluate_union(name: str, shift: float | None = None,
+                   window: int = DEFAULT_WINDOW, verbose: bool = True,
+                   margin: float = DEFAULT_MARGIN) -> dict:
     """Score the forecaster alone against the forecaster plus novelty."""
     from data import load_spacecraft
     from detect import detect
@@ -115,7 +149,7 @@ def evaluate_union(name: str, shift: float = DEFAULT_SHIFT,
 
     novel_ev: dict[str, list] = {}
     for e in channel_events(bundle, result["channels"], offset,
-                            len(result["t"]), shift, window):
+                            len(result["t"]), shift, window, margin=margin):
         novel_ev.setdefault(e["channel"], []).append((e["start"], e["end"]))
 
     def score(pred: dict) -> dict:
@@ -142,7 +176,7 @@ def evaluate_union(name: str, shift: float = DEFAULT_SHIFT,
         "forecast_only": score(forecast_ev),
         "novelty_only": score(novel_ev),
         "combined": score(combined),
-        "shift": shift, "window": window,
+        "shift": shift, "window": window, "margin": margin,
     }
     if verbose:
         print(f"\n=== {name} ===")
@@ -155,7 +189,7 @@ def evaluate_union(name: str, shift: float = DEFAULT_SHIFT,
     return out
 
 
-def select_cross_mission(grid_shift=(3.0, 4.0, 5.0, 6.0, 8.0),
+def select_cross_mission(grid_margin=(1.0, 1.5, 2.0, 3.0, 5.0),
                          grid_window=(30, 60, 120)) -> dict:
     """Choose the novelty settings on one mission, report them on the other.
 
@@ -167,17 +201,19 @@ def select_cross_mission(grid_shift=(3.0, 4.0, 5.0, 6.0, 8.0),
     report = {}
     for tune_on, report_on in ((names[1], names[0]), (names[0], names[1])):
         best, best_f1 = None, -1.0
-        for sh in grid_shift:
+        for mg in grid_margin:
             for win in grid_window:
-                f1 = evaluate_union(tune_on, sh, win, verbose=False)["combined"]["f1"]
+                f1 = evaluate_union(tune_on, None, win, verbose=False,
+                                    margin=mg)["combined"]["f1"]
                 if f1 > best_f1:
-                    best, best_f1 = (sh, win), f1
-        held = evaluate_union(report_on, best[0], best[1], verbose=False)
+                    best, best_f1 = (mg, win), f1
+        held = evaluate_union(report_on, None, best[1], verbose=False,
+                              margin=best[0])
         report[report_on] = {"chosen_on": tune_on,
-                             "shift": best[0], "window": best[1], **held}
+                             "margin": best[0], "window": best[1], **held}
         f, c = held["forecast_only"], held["combined"]
-        print(f"\nsettings chosen on {tune_on} (shift {best[0]}, window {best[1]})"
-              f" -> HELD-OUT {report_on}:")
+        print(f"\nsettings chosen on {tune_on} (margin {best[0]}x the channel's "
+              f"own wander, window {best[1]}) -> HELD-OUT {report_on}:")
         print(f"   forecast only : P {f['precision']:.3f}  R {f['recall']:.3f}  "
               f"F1 {f['f1']:.3f}")
         print(f"   + novelty     : P {c['precision']:.3f}  R {c['recall']:.3f}  "
@@ -192,14 +228,14 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--cross-mission", action="store_true",
                     help="select settings on the other mission (the honest test)")
-    ap.add_argument("--shift", type=float, default=DEFAULT_SHIFT)
+    ap.add_argument("--margin", type=float, default=DEFAULT_MARGIN)
     ap.add_argument("--window", type=int, default=DEFAULT_WINDOW)
     args = ap.parse_args()
 
     if args.cross_mission:
         blob = select_cross_mission()
     else:
-        blob = {sc: evaluate_union(sc, args.shift, args.window)
+        blob = {sc: evaluate_union(sc, None, args.window, margin=args.margin)
                 for sc in SPACECRAFT}
     (REPORT_DIR / "novelty.json").write_text(json.dumps(blob, indent=2))
     print(f"\nwrote {REPORT_DIR / 'novelty.json'}")

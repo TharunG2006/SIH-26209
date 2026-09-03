@@ -336,3 +336,53 @@ often when something is actually wrong - and that test is now built into the
 code rather than remembered. `factors.py` requires a lift of 2.0 before
 reporting a cause; `prewarning.py` requires 1.5 before calling something early
 warning.
+
+
+## Novelty detection: the first idea that improved recall on both missions
+
+Four attempts at recall had failed, and all four asked the same question in a
+different way: *is the forecast error large?* That question has a structural
+blind spot. An LSTM with a 250-reading window learns to follow a sustained level
+shift, so once a fault persists the model predicts the faulty values accurately,
+the error collapses, and the detector goes quiet while the channel is plainly
+broken.
+
+Diagnosing the misses rather than guessing made it concrete. On MSL the forecast
+error stays under 3 sigma for **46%** of everything missed; on SMAP the raw
+values sit more than two training-sigma from where they ever operated for **29%**
+of misses. The information was there - forecast error was the wrong question.
+
+`novelty.py` asks whether a channel is *operating where it used to*, comparing a
+rolling median of the test values against the training envelope. The model is
+not involved, so it cannot be fooled by the model adapting.
+
+### The threshold had to be per channel
+
+The first version used one absolute shift threshold for every channel. Chosen on
+SMAP it was far too loose for MSL, whose precision fell from 0.889 to 0.291
+while recall tripled - a swap, not a gain. What counts as "far from normal"
+depends on how much a channel drifts during healthy operation, and that differs
+per channel and per spacecraft.
+
+Each channel is now compared against a multiple of its own training-time wander,
+measured by applying the same statistic to the training data. That removed the
+mission dependence, and one setting now transfers:
+
+| Held out | forecast only | + novelty | change |
+|---|---|---|---|
+| **SMAP** | P 1.000 R 0.382 F1 0.553 | P 0.893 **R 0.515** F1 **0.653** | recall **+0.132**, F1 +0.100 |
+| **MSL** | P 0.889 R 0.222 F1 0.356 | P 0.789 **R 0.333** F1 **0.469** | recall **+0.111**, F1 +0.113 |
+
+Settings were chosen on the *other* mission, as everywhere else here. Recall
+improves on both, F1 improves on both, and precision gives up 11 points on SMAP
+and 10 on MSL - a real trade rather than a swap.
+
+### What did not work, recorded
+
+A joint Mahalanobis detector over the residual vector, scoring cross-channel
+combinations that never occur during healthy operation, was built on the
+reasoning that a fault showing as five channels each moving two sigma is
+invisible to a per-channel detector. On MSL it appeared to add three windows the
+per-channel detector missed. Under cross-mission threshold selection it adds
+**exactly zero** on both missions: the apparent gain came entirely from choosing
+the quantile against MSL's own labels.
