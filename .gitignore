@@ -24,3 +24,4 @@ prototype/config/channel_names.json
 prototype/*.db
 prototype/data/satnogs/
 prototype/data/satnogs/cache/
+prototype/data/esa/
