@@ -13,21 +13,44 @@ repo is for the working prototype, per mentor's instruction to build one now.
 Satellites stream multivariate telemetry (power, temperature, sensors,
 communication). Engineers currently monitor this manually across many
 screens, which doesn't scale as constellations grow into the thousands.
-Faults often show up as a *pattern* across multiple channels, not a single
-threshold breach, so simple rule-based alarms miss them or fire too late.
+
+Conventional fixed-limit alarms fail in two measured ways, and neither is the
+one usually assumed. They do not fire *late*: a redline trips the instant a
+reading leaves its range, which is earlier than any forecast-based detector can
+manage. They fire *constantly* - on the NASA benchmark such a limit flags 8.6%
+of healthy SMAP readings and 19.1% of healthy MSL readings, so real faults are
+buried in noise operators have learned to ignore. And when one does fire it
+reports only that a number left a band, never which sensor is responsible, by
+how much, or what it affected next.
+
+An operator facing a thousand spacecraft needs the opposite: an alarm that
+speaks rarely and, when it does, names the sensor. That is the gap this project
+targets - not earlier detection, and not prediction, both of which were measured
+and are recorded as negative results in `prototype/reports/RESULTS.md`.
 
 ## Proposed Solution
 An AI-based satellite health monitoring system:
-1. LSTM (or Transformer) model learns each satellite's normal telemetry
-   pattern and predicts expected values.
-2. Large prediction-vs-actual deviation = anomaly candidate.
+1. One LSTM per channel learns that channel's normal behaviour and forecasts
+   its next value. A single joint multivariate model was built first and is
+   kept as a fallback; scoring the fleet by its loudest channel drove top-1
+   attribution down to 0.09, which is what moved detection per-channel.
+2. A large prediction-vs-actual deviation, expressed as a robust z-score
+   against that channel's own error distribution, is an anomaly candidate.
+   Per-channel scaling is what lets a quiet channel be heard at all.
 3. **Explainability layer (the key differentiator):** for each flagged
-   anomaly, show *which* channel(s) deviated most and by how much — not
-   just a black-box score. Use per-channel prediction-error attribution
-   (native to the model, no extra compute) and/or attention-weight
-   visualization if using an attention-based model. Avoid SHAP — too slow
-   for real-time telemetry.
-4. Alerts are ranked by severity and pushed to an operator dashboard.
+   anomaly, show *which* channel(s) deviated most and by how much, and which
+   moved first — not just a black-box score. Per-channel prediction-error
+   attribution reuses the residuals detection already computed, so it costs no
+   extra compute. Avoid SHAP — too slow for real-time telemetry. An
+   attention-based variant remains a possible second explanation channel but
+   is not built.
+4. Co-firing channels are grouped into one incident, ranked by severity, and
+   pushed to an operator dashboard as a single explained alert.
+
+Measured and ruled out, so they should not be proposed again without new
+evidence: early warning (no precursor exists - tested on 1,231 NASA and ESA
+anomalies), commanding as an explanatory factor (lift 1.0), and cross-channel
+Mahalanobis detection (zero gain under honest selection).
 
 ## Why this is defensible (competitive research already done)
 - NASA has an open-source baseline: telemanom (LSTM, SMAP/MSL datasets,
