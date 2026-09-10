@@ -68,6 +68,11 @@ def load_channel(name: str, mission: str = "Mission1") -> pd.Series:
     The files are pickled DataFrames stored with a .zip extension, which is how
     the benchmark's own loader reads them; a genuine zip archive is handled too
     so a re-packed copy still works.
+
+    Unpickling executes whatever the file says, so this trusts the archive. That
+    is the format ESA publishes and there is no alternative reader, so the trust
+    boundary is the Zenodo download itself: fetch it from the DOI in the README
+    and do not point this at a mission folder from anywhere else.
     """
     path = mission_dir(mission) / "channels" / f"{name}.zip"
     try:

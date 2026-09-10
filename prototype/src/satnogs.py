@@ -402,7 +402,11 @@ def refresh_capture(norad_id: int, hours: int = 12,
     SATNOGS_DIR.mkdir(parents=True, exist_ok=True)
     combined.to_parquet(path, index=False)
 
-    out = {"satellite": name, "new_frames": len(combined) - before,
+    # Never negative. Dedup runs over the merged frame, so if the stored file
+    # held rows this rule now collapses - a decoder adding a column changes what
+    # counts as a duplicate row - the total can fall and a plain subtraction
+    # reports "-5 new frames".
+    out = {"satellite": name, "new_frames": max(0, len(combined) - before),
            "total_frames": len(combined),
            "newest": str(combined["timestamp"].iloc[-1]),
            "path": str(path)}

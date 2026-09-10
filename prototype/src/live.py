@@ -38,14 +38,25 @@ LIVE_EPOCHS = 30
 
 # Fields that are structurally uninformative about spacecraft health.
 METADATA_FIELDS = {"observation_id", FRAME_INDEX, "timestamp"}
-COUNTER_HINTS = ("_ct", "count", "cnt", "seq", "time_since", "sec_in",
-                 "time_stamp", "sub_seconds", "packet_length", "process_id",
-                 "uptime", "boot",
-                 # Storage partition read/write pointers. These advance with
-                 # housekeeping writes, so a forecaster reproduces them almost
-                 # exactly - COSMO's scored val MSE 0.00005 against 0.7 for a
-                 # real rotation rate - while saying nothing about health.
-                 "store_part")
+# Counters and identifiers: near-perfectly predictable from their own history,
+# so a forecaster scores brilliantly on them while learning nothing.
+#
+# Token-anchored for the same reason as the geometry rule below, with the word
+# endings that genuinely occur spelled out: `count` must still catch `counter`
+# and `counts`, but a bare prefix match also caught `adcs_bootstrap_mode`, which
+# is an operating state and not a tally.
+COUNTER_PATTERNS = (
+    r"ct", r"count(?:er|s)?", r"cnt", r"seq(?:uence)?(?:_ct)?",
+    r"time_since\w*", r"sec_in\w*", r"time_stamp", r"sub_seconds",
+    r"packet_length", r"process_id", r"uptime", r"boot(?:s)?",
+    # Storage partition read/write pointers. These advance with housekeeping
+    # writes, so a forecaster reproduces them almost exactly - COSMO's scored
+    # val MSE 0.00005 against 0.7 for a real rotation rate - while saying
+    # nothing about health.
+    r"store_part\w*",
+)
+_COUNTER_RE = re.compile(
+    "|".join(rf"(?:^|_){p}(?:$|_)" for p in COUNTER_PATTERNS))
 
 # Orbital geometry, not spacecraft health. A GPS position component swings
 # between large positive and negative values every orbit while the distance from
@@ -55,8 +66,20 @@ COUNTER_HINTS = ("_ct", "count", "cnt", "seq", "time_since", "sec_in",
 # reports it as a fault: COSMO's only "anomaly" was a position component moving
 # as the satellite orbited. Where the spacecraft is says nothing about whether it
 # is healthy, which is the same reason a packet counter is excluded.
-GEOMETRY_HINTS = ("pos_ecef", "_ecef", "position", "_lat", "_lon", "longitude",
-                  "latitude", "altitude", "_tle", "orbit")
+#
+# Matched on whole name tokens, not as substrings. A bare `_lat` also matches
+# `eps_latch_current` - a latch-up current, which is the primary radiation
+# indicator on a cubesat and the last channel that should silently vanish from
+# monitoring - and `orbit` matches `obc_orbital_mode`, an operating state rather
+# than a position. Exclusions fail silently by design: the channel is simply not
+# there afterwards, so an over-broad rule leaves nothing to notice.
+GEOMETRY_PATTERNS = (
+    r"pos_ecef", r"ecef", r"position",
+    r"lat(?:itude)?", r"lon(?:gitude)?", r"alt(?:itude)?",
+    r"tle", r"orbit",
+)
+_GEOMETRY_RE = re.compile(
+    "|".join(rf"(?:^|_){p}(?:$|_)" for p in GEOMETRY_PATTERNS))
 
 # Transport and framing metadata. A decoded frame carries the packet routing
 # layer alongside the payload: CubeSat Space Protocol headers, AX.25 callsigns,
@@ -134,9 +157,9 @@ def health_channels(df: pd.DataFrame, min_unique: int = 8,
     for c in usable_channels(df, min_unique=min_unique):
         if c in METADATA_FIELDS or _is_protocol(c):
             continue
-        if any(h in c.lower() for h in COUNTER_HINTS):
+        if _COUNTER_RE.search(c.lower()):
             continue
-        if any(h in c.lower() for h in GEOMETRY_HINTS):
+        if _GEOMETRY_RE.search(c.lower()):
             continue
         if df[c].notna().mean() < min_coverage:
             continue          # present in too few frames to model

@@ -213,16 +213,26 @@ def describe_group(channels, values_by_channel=None) -> dict[str, dict]:
     channel that differs only by a trailing index decides the scale once.
     """
     values_by_channel = values_by_channel or {}
+
+    # Pooling is only safe between channels that are genuinely the same
+    # measurement, so the shared stem must also carry a recognised quantity.
+    # A trailing index is not on its own evidence of redundancy: ESA names every
+    # channel `channel_1` ... `channel_76`, which all reduce to the same stem
+    # while measuring entirely unrelated things, and NASA's `P-1`/`P-2` do the
+    # same. Requiring a quantity keeps `psu_pv_in_power1/2/3` together and those
+    # apart, since an anonymised name yields no quantity at all.
     pooled: dict[str, list] = {}
     for ch in channels:
         v = values_by_channel.get(ch)
-        if v is not None:
-            pooled.setdefault(_stem(ch), []).append(np.asarray(v).ravel())
+        if v is None or quantity_of(ch) is None:
+            continue
+        pooled.setdefault((_stem(ch), quantity_of(ch)), []).append(
+            np.asarray(v).ravel())
 
     out = {}
     for ch in channels:
-        group = pooled.get(_stem(ch))
-        vals = (np.concatenate(group) if group
+        group = pooled.get((_stem(ch), quantity_of(ch)))
+        vals = (np.concatenate(group) if group and len(group) > 1
                 else values_by_channel.get(ch))
         out[ch] = describe(ch, vals)
     return out

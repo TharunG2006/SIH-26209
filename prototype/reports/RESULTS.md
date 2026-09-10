@@ -450,24 +450,30 @@ on a trailing-median residual that predicts nothing, so a negative cannot be
 blamed on our forecaster. Baselines are drawn only from stretches with no
 annotation of any category within 500 readings.
 
-| Mission1, subsequence anomalies (n=1,127) | warns before | fires at random | lift |
+| Mission1, subsequence anomalies (n=1,142) | warns before | fires at random | lift |
 |---|---|---|---|
 | CUSUM | 88% | 88% | **0.99** |
-| rolling trend | 68% | 71% | **0.96** |
+| rolling trend | 67% | 71% | **0.94** |
 | volatility | 11% | 11% | **1.04** |
 
 | Mission1, point anomalies (n=61) | warns before | fires at random | lift |
 |---|---|---|---|
 | CUSUM | 100% | 100% | **1.00** |
-| rolling trend | 30% | 27% | **1.08** |
+| rolling trend | 28% | 28% | **1.01** |
 | volatility | 0% | 0% | n/a |
+
+These figures come from the unified causal residual. An earlier pass ran the ESA
+path through a second implementation whose window included the current reading,
+letting a departure sit inside its own baseline; the two now share one function,
+so the ESA and NASA columns measure the same thing. The lifts moved by at most
+0.07 and no verdict changed.
 
 "CUSUM warns before 88% of anomalies, and before 100% of point anomalies" is a
 sentence one could put on a slide. It is worthless: the same detector fires
 before 88% and 100% of arbitrary quiet moments. Every lift sits at 1.0.
 
 This is the strongest form of the negative result available. It holds on a
-second agency's missions, on 1,127 events rather than 68, on the anomaly class
+second agency's missions, on 1,142 events rather than 68, on the anomaly class
 most favourable to the claim, and without a model to blame. Prewarning is not
 merely unachieved in this project - the precursor is not present in the
 telemetry.

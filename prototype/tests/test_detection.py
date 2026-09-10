@@ -319,3 +319,88 @@ def test_live_manifest_resolves_from_any_directory(tmp_path, monkeypatch):
         raise AssertionError(f"fell back to nothing: {e}") from None
     except Exception:
         pass    # any parse error means the path was found and opened
+
+
+def test_exclusion_rules_match_whole_tokens_not_substrings():
+    """An over-broad exclusion deletes a channel with nothing left to notice.
+
+    `_lat` as a substring also matches `eps_latch_current` - a latch-up current,
+    the primary radiation indicator on a cubesat - and `orbit` matches
+    `obc_orbital_mode`, an operating state. `boot` matched `adcs_bootstrap_mode`
+    the same way. Channels removed here simply are not monitored afterwards, and
+    no error is raised, so the rule has to be right on its own.
+    """
+    import numpy as np
+    import pandas as pd
+
+    import live
+
+    n = 300
+    rng = np.random.default_rng(0)
+    keep_these = ["eps_latch_current", "obc_orbital_mode",
+                  "adcs_bootstrap_mode", "thermal_conduct_w", "psu_bat_v"]
+    drop_these = ["bcn_adcs_gps_pos_ecef_1", "gps_latitude", "nav_alt",
+                  "uhf_rx_count", "psu_reset_counter", "sys_uptime",
+                  "bcn_store_part_wr_hk"]
+    df = pd.DataFrame({c: rng.normal(50, 5, n)
+                       for c in keep_these + drop_these})
+    keep = live.health_channels(df, min_unique=4, min_coverage=0.5)
+
+    for c in keep_these:
+        assert c in keep, f"{c} is real telemetry and was excluded"
+    for c in drop_these:
+        assert c not in keep, f"{c} is not health telemetry and was kept"
+
+
+def test_precursor_residual_never_sees_the_current_reading():
+    """A causal baseline cannot include the point it is judging.
+
+    Two implementations existed briefly - one causal, one whose rolling window
+    included the current reading - so the NASA and ESA numbers were not quite
+    measuring the same thing. A spike inside its own baseline partly cancels the
+    departure being measured, and no live detector could do it anyway.
+    """
+    import numpy as np
+
+    import precursor
+
+    rng = np.random.default_rng(0)
+    v = np.arange(600, dtype=float) + rng.normal(0, 1, 600)
+    window = 100
+
+    r = precursor.residual(v, window)
+    assert np.allclose(r, precursor._residual_fast(v, window), equal_nan=True), \
+        "the two paths disagree"
+
+    # Reference: the level at k is the median of the readings strictly before k.
+    # On a ramp this differs measurably from a window that includes k, which is
+    # what makes the ramp the right signal to test on.
+    level = np.array([np.median(v[max(0, k - window):k]) if k else v[0]
+                      for k in range(len(v))])
+    ref = np.abs(v - level)
+    ref = ref / max(np.median(np.abs(ref - np.median(ref))) * 1.4826, 1e-9)
+    assert np.allclose(r[window:], ref[window:], rtol=1e-6), \
+        "the level is not taken from strictly prior readings"
+
+
+def test_redundant_pooling_needs_a_shared_quantity():
+    """A trailing index alone is not evidence that two channels are siblings.
+
+    ESA names every channel `channel_1` ... `channel_76` and NASA has `P-1`,
+    `P-2`; all reduce to one stem while measuring unrelated things. Pooling
+    those would resolve one channel's unit from another channel's magnitudes.
+    """
+    import numpy as np
+
+    import sensors
+
+    unrelated = {"channel_1": np.full(20, 8.0),
+                 "channel_42": np.full(20, 9000.0)}
+    for d in sensors.describe_group(list(unrelated), unrelated).values():
+        assert d["unit"] is None, "unrelated channels were pooled"
+
+    siblings = {f"psu_pv_in_power{i}": np.full(50, v)
+                for i, v in ((1, 4000.0), (2, 3800.0), (3, 400.0))}
+    units = {d["unit"] for d in
+             sensors.describe_group(list(siblings), siblings).values()}
+    assert units == {"mW"}, f"real siblings stopped agreeing: {units}"

@@ -33,13 +33,19 @@ def residual(values: np.ndarray, window: int = 100) -> np.ndarray:
     Subtracting a trailing median removes the channel's slow baseline without
     predicting anything, so what remains is the departure a persistence model
     would have failed to anticipate.
+
+    The window is strictly causal - the median covers `v[k-window:k]` and not
+    `v[k]` itself. Including the current reading lets a spike sit inside its own
+    baseline and partly cancel the very departure being measured, and it is not
+    something a detector running live could do.
     """
     v = np.asarray(values, dtype=float)
     n = len(v)
     if n < window + 2:
         return np.zeros(n)
-    pad = np.concatenate([np.full(window, v[0]), v])
-    level = np.array([np.median(pad[i:i + window]) for i in range(n)])
+    level = (pd.Series(v).shift(1)
+             .rolling(window, min_periods=1).median()
+             .bfill().to_numpy())
     r = np.abs(v - level)
     scale = np.median(np.abs(r - np.median(r))) * 1.4826
     return r / max(scale, 1e-9)
@@ -140,16 +146,14 @@ CONTEXT = 200       # readings of history the residual needs before the window
 
 
 def _residual_fast(v: np.ndarray, window: int = 100) -> np.ndarray:
-    """Same trailing-median residual, vectorised.
+    """Kept as a name; the one implementation now serves both paths.
 
-    The loop version is O(n * window) and a 14-year ESA channel is 10.5 million
-    readings, so the whole-channel form is not usable there.
+    These were briefly two functions with different windows - the whole-channel
+    one causal, this one including the current reading - so the NASA and ESA
+    numbers were not measuring quite the same thing. `residual` is vectorised
+    and causal, and is what both use.
     """
-    s = pd.Series(np.asarray(v, dtype=float))
-    level = s.rolling(window, min_periods=1).median().to_numpy()
-    r = np.abs(s.to_numpy() - level)
-    scale = np.median(np.abs(r - np.median(r))) * 1.4826
-    return r / max(scale, 1e-9)
+    return residual(v, window)
 
 
 def _fires_before(values: np.ndarray, at: int, max_lead: int) -> dict:

@@ -70,6 +70,10 @@ def _load_disk(spacecraft: str, per_channel, fingerprint):
     if not path.exists():
         return None
     try:
+        # allow_pickle is needed for the object arrays holding the channel names
+        # and the per-channel lengths. The file is written by _save_disk into a
+        # gitignored directory under models/, so it is always locally produced;
+        # a cache from anywhere else should be deleted rather than loaded.
         blob = np.load(path, allow_pickle=True)
         if tuple(blob["fingerprint"]) != tuple(fingerprint):
             return None          # models were retrained; recompute
