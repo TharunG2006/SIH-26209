@@ -25,3 +25,4 @@ prototype/*.db
 prototype/data/satnogs/
 prototype/data/satnogs/cache/
 prototype/data/esa/
+prototype/models/forecast_cache/
