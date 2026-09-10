@@ -25,7 +25,9 @@ import pandas as pd
 
 from config import DATA_DIR
 
-ESA_DIR = DATA_DIR / "esa"
+# DATA_DIR points at the NASA benchmark folder; the ESA missions sit beside it,
+# the same way satnogs.py locates its captures.
+ESA_DIR = DATA_DIR.parent / "esa"
 
 
 def mission_dir(mission: str = "Mission1") -> Path:
@@ -47,8 +49,12 @@ def load_annotations(mission: str = "Mission1") -> pd.DataFrame:
     labels = pd.read_csv(d / "labels.csv")
     types = pd.read_csv(d / "anomaly_types.csv")
     merged = labels.merge(types, on="ID", how="left")
+    # Annotations carry a timezone and the channel files do not, so comparing
+    # them raises rather than silently misaligning. The benchmark's own
+    # preparation script drops the zone (`ignoretz=True`); this matches it.
     for col in ("StartTime", "EndTime"):
-        merged[col] = pd.to_datetime(merged[col], errors="coerce", utc=False)
+        t = pd.to_datetime(merged[col], errors="coerce", utc=True)
+        merged[col] = t.dt.tz_localize(None)
     return merged
 
 
@@ -76,7 +82,10 @@ def load_channel(name: str, mission: str = "Mission1") -> pd.Series:
     else:
         col = name if name in df.columns else df.columns[0]
         s = df[col]
-    s.index = pd.to_datetime(s.index)
+    idx = pd.to_datetime(s.index)
+    if getattr(idx, "tz", None) is not None:
+        idx = idx.tz_convert(None)
+    s.index = idx
     return s.sort_index()
 
 

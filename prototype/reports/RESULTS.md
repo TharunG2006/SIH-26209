@@ -430,3 +430,51 @@ catches at all, and names the responsible sensor in 25 of 26 matched events.
 So the defensible claim is not earlier detection. It is *comparable coverage at a
 false-alarm rate two orders of magnitude lower, with an explanation attached*.
 Any wording in this repository promising earlier detection is wrong.
+
+## Early warning, retested on ESA: still absent, and now on the fair population
+
+The negative early-warning result above has an obvious objection: 59% of NASA's
+anomalies are annotated `point`, meaning instantaneous. A method cannot warn
+before something that has no before, so the failure might belong to the labels
+rather than to the idea.
+
+The ESA Anomaly Dataset answers that objection. Mission1 carries **1,203
+anomalies, of which 1,142 are annotated `Subsequence`** - extended in time - and
+only 61 `Point`. It also separates a genuine anomaly from a *rare nominal event*
+(an uncommanded reset is a fault; the same reset after a telecommand is not),
+which NASA's labels do not, so the events tested here are real faults. 76
+channels, 14 years, 10.5 million readings per channel.
+
+The test is `precursor.py`, which is deliberately **model-free**: detectors run
+on a trailing-median residual that predicts nothing, so a negative cannot be
+blamed on our forecaster. Baselines are drawn only from stretches with no
+annotation of any category within 500 readings.
+
+| Mission1, subsequence anomalies (n=1,127) | warns before | fires at random | lift |
+|---|---|---|---|
+| CUSUM | 88% | 88% | **0.99** |
+| rolling trend | 68% | 71% | **0.96** |
+| volatility | 11% | 11% | **1.04** |
+
+| Mission1, point anomalies (n=61) | warns before | fires at random | lift |
+|---|---|---|---|
+| CUSUM | 100% | 100% | **1.00** |
+| rolling trend | 30% | 27% | **1.08** |
+| volatility | 0% | 0% | n/a |
+
+"CUSUM warns before 88% of anomalies, and before 100% of point anomalies" is a
+sentence one could put on a slide. It is worthless: the same detector fires
+before 88% and 100% of arbitrary quiet moments. Every lift sits at 1.0.
+
+This is the strongest form of the negative result available. It holds on a
+second agency's missions, on 1,127 events rather than 68, on the anomaly class
+most favourable to the claim, and without a model to blame. Prewarning is not
+merely unachieved in this project - the precursor is not present in the
+telemetry.
+
+The four honest conclusions, in order of how hard they were to reach:
+
+1. This detector names the responsible sensor in 25 of 26 matched events.
+2. It does so at 0.04% false alarms against a fixed limit's 8.6% and 19.1%.
+3. It is never earlier than that limit.
+4. It cannot predict. Neither, on this evidence, can anything else.

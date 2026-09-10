@@ -14,6 +14,7 @@ warning, however impressive its raw hit rate looks.
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
 from early import MIN_USEFUL_LIFT, cusum_alarm, trend_alarm, volatility_alarm
 from evaluate import wilson_interval
@@ -131,3 +132,95 @@ def print_table(title: str, table: dict) -> None:
         verdict = "EARLY WARNING" if v["is_early_warning"] else "not early warning"
         print(f"  {k:11s} {v['warned']:5d}/{v['of']:<5d} {v['rate']:5.0%} "
               f"{v['fires_at_random']:9.0%} {lift:>7s} {lead:>12s}  {verdict}")
+
+
+# --- slice-based testing, for missions too long to scan whole -----------------
+
+CONTEXT = 200       # readings of history the residual needs before the window
+
+
+def _residual_fast(v: np.ndarray, window: int = 100) -> np.ndarray:
+    """Same trailing-median residual, vectorised.
+
+    The loop version is O(n * window) and a 14-year ESA channel is 10.5 million
+    readings, so the whole-channel form is not usable there.
+    """
+    s = pd.Series(np.asarray(v, dtype=float))
+    level = s.rolling(window, min_periods=1).median().to_numpy()
+    r = np.abs(s.to_numpy() - level)
+    scale = np.median(np.abs(r - np.median(r))) * 1.4826
+    return r / max(scale, 1e-9)
+
+
+def _fires_before(values: np.ndarray, at: int, max_lead: int) -> dict:
+    """Which detectors sustain an alarm in the stretch ending at `at`."""
+    lo = at - max_lead - CONTEXT
+    if lo < 0:
+        return {}
+    seg = np.asarray(values[lo:at], dtype=float)
+    if not np.isfinite(seg).all():
+        seg = np.nan_to_num(seg, nan=float(np.nanmedian(seg)) if np.isfinite(seg).any() else 0.0)
+    r = _residual_fast(seg)[CONTEXT:]
+    return {k: _sustained(fn(r), MIN_RUN) is not None for k, fn in DETECTORS.items()}
+
+
+def test_onsets(values: np.ndarray, onsets, blocked: np.ndarray, rng,
+                max_lead: int = MAX_LEAD, trials: int = RANDOM_TRIALS):
+    """Detector hits before real onsets, and before matched quiet points.
+
+    `blocked` marks every reading near any annotated event of any kind, so a
+    "nothing is wrong here" baseline is not drawn from inside another anomaly.
+    """
+    hits = {k: 0 for k in DETECTORS}
+    rand = {k: [0, 0] for k in DETECTORS}
+    n = len(values)
+    used = 0
+    for at in onsets:
+        fired = _fires_before(values, int(at), max_lead)
+        if not fired:
+            continue
+        used += 1
+        for k, f in fired.items():
+            hits[k] += bool(f)
+
+    lo = max_lead + CONTEXT + 1
+    if used and n > lo:
+        cand = np.flatnonzero(~blocked[lo:]) + lo
+        if cand.size:
+            picks = rng.choice(cand, size=min(cand.size, used * trials),
+                               replace=False)
+            for r0 in picks:
+                fired = _fires_before(values, int(r0), max_lead)
+                for k, f in fired.items():
+                    rand[k][1] += 1
+                    rand[k][0] += bool(f)
+    return hits, rand, used
+
+
+def summarise_counts(per_channel) -> dict:
+    """Pool slice-based counts into the same lift table."""
+    hits = {k: 0 for k in DETECTORS}
+    rand = {k: [0, 0] for k in DETECTORS}
+    total = 0
+    for h, r, n in per_channel:
+        total += n
+        for k in DETECTORS:
+            hits[k] += h[k]
+            rand[k][0] += r[k][0]
+            rand[k][1] += r[k][1]
+
+    out = {}
+    for k in DETECTORS:
+        rate = hits[k] / total if total else 0.0
+        base = rand[k][0] / rand[k][1] if rand[k][1] else 0.0
+        lift = rate / base if base else None
+        out[k] = {
+            "warned": hits[k], "of": total, "rate": round(rate, 4),
+            "rate_95ci": wilson_interval(hits[k], total),
+            "fires_at_random": round(base, 4),
+            "lift": None if lift is None else round(lift, 3),
+            "median_lead": None,
+            "is_early_warning": bool(lift is not None
+                                     and lift >= MIN_USEFUL_LIFT),
+        }
+    return out
