@@ -326,7 +326,8 @@ arbitrary moments. Every lift is **below 1.0** - each level speaks slightly less
 readily before a real anomaly than before nothing at all.
 
 So the system detects faults as they begin and does not anticipate them. The
-claim to make is *earlier detection with an explanation*, never prediction.
+claim to make is *detection with an explanation*, never prediction - and not
+earlier detection either, which is measured and refuted further down.
 
 This is the third signal in this project that looked explanatory and was not:
 protocol headers selected as telemetry because they appear in every frame,
@@ -386,3 +387,46 @@ invisible to a per-channel detector. On MSL it appeared to add three windows the
 per-channel detector missed. Under cross-mission threshold selection it adds
 **exactly zero** on both missions: the apparent gain came entirely from choosing
 the quantile against MSL's own labels.
+
+## Against a conventional fixed-limit alarm: we are not earlier, we are quieter
+
+An earlier note in this project claimed the detector fires before a fixed-limit
+alarm on 16 of 26 SMAP anomalies. That figure was never recorded here and does
+not reproduce. Measured properly it is the opposite.
+
+The baseline is the redline an operator would set knowing only healthy
+behaviour: the minimum and maximum of the training series, applied unchanged to
+the test series. A window counts as caught when a detection overlaps it, the
+same rule the evaluator uses.
+
+| | SMAP | MSL |
+|---|---|---|
+| both alarms caught it | 17 | 6 |
+| ...we spoke first | **0** | **0** |
+| ...the limit spoke first | 12 | 6 |
+| ...same reading | 5 | 0 |
+| only we caught it | 9 | 2 |
+| only the limit caught it | 10 | 14 |
+| neither | 32 | 14 |
+
+We are never first. A limit set at the edge of the training range trips the
+instant a reading leaves that range, whereas this detector waits for a
+forecast error to persist for `min_run` readings and clear a threshold. Waiting
+is the whole point, and it costs time.
+
+What that waiting buys is the actual result:
+
+| on healthy readings only | SMAP | MSL |
+|---|---|---|
+| fixed limit false alarms | 31,518 / 366,509 = **8.60%** | 11,299 / 59,213 = **19.08%** |
+| ours | 142 / 366,509 = **0.04%** | 25 / 59,213 = **0.04%** |
+| channels crying wolf | 14/54 vs 2/54 | 12/27 vs 3/27 |
+
+The limit is first because it is always talking: on MSL it flags nearly a fifth
+of all healthy telemetry. At **215x fewer false alarms on SMAP and 452x fewer on
+MSL**, this detector still catches 9 SMAP and 2 MSL windows the limit never
+catches at all, and names the responsible sensor in 25 of 26 matched events.
+
+So the defensible claim is not earlier detection. It is *comparable coverage at a
+false-alarm rate two orders of magnitude lower, with an explanation attached*.
+Any wording in this repository promising earlier detection is wrong.
