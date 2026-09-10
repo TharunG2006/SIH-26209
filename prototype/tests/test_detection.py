@@ -217,3 +217,46 @@ class TestWilsonInterval:
 
     def test_zero_trials(self):
         assert wilson_interval(0, 0) == (0.0, 0.0)
+
+
+# --- what a channel measures, and what counts as health ---------------------
+
+def test_gps_position_names_the_receiver_not_attitude_control():
+    """`bcn_adcs_gps_pos_ecef_1` is a GPS reading, not an orientation.
+
+    These names run general to specific, and taking the first recognised token
+    labelled the channel "Attitude control position" - which reads as though the
+    spacecraft were reporting which way it was facing rather than where it was.
+    """
+    import sensors
+    assert sensors.subsystem_of("bcn_adcs_gps_pos_ecef_1") == "Navigation"
+    assert sensors.subsystem_of("bcn_adcs_bod_rt_1") == "Attitude control"
+    assert sensors.subsystem_of("bcn_psu_bat_temp_kelvin") == "Power supply"
+
+
+def test_orbital_geometry_is_not_a_health_channel():
+    """Where the spacecraft is says nothing about whether it is healthy.
+
+    A GPS position component swings between large positive and negative values
+    every orbit while the distance from Earth's centre stays constant. Sampled
+    only during ground-station passes, no forecaster can track that swing, so it
+    is reported as a fault - COSMO's only "anomaly" was the satellite orbiting.
+    """
+    import numpy as np
+    import pandas as pd
+
+    import live
+
+    n = 400
+    rng = np.random.default_rng(0)
+    phase = np.linspace(0, 8 * np.pi, n)
+    df = pd.DataFrame({
+        "bcn_adcs_gps_pos_ecef_1": 3.4e8 * np.cos(phase),
+        "bcn_adcs_gps_pos_ecef_2": 3.4e8 * np.sin(phase),
+        "bcn_adcs_bod_rt_1": rng.normal(0, 1, n),
+        "bcn_store_part_wr_hk": np.arange(n) + rng.integers(0, 2, n),
+    })
+    keep = live.health_channels(df, min_unique=4, min_coverage=0.5)
+    assert not [c for c in keep if "ecef" in c], "orbital position was kept"
+    assert not [c for c in keep if "store_part" in c], "a storage pointer was kept"
+    assert "bcn_adcs_bod_rt_1" in keep, "a real health channel was dropped"

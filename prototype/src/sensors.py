@@ -39,7 +39,8 @@ QUANTITY_PATTERNS: list[tuple[str, str]] = [
     (r"amp\b|_amp_|current|_ma\b|_i\b", "current"),
     (r"pos_ecef|position|_lat\b|_lon\b|altitude", "position"),
     (r"bod_rt|rot_rate|gyro|angular", "rotation rate"),
-    (r"att_resid|quaternion|_att_|attitude", "attitude"),
+    (r"att_resid", "pointing error"),
+    (r"quaternion|_att_|attitude", "attitude"),
     (r"pressure|_bar\b", "pressure"),
     (r"_t$|_t_", "temperature"),
 ]
@@ -103,12 +104,17 @@ def quantity_of(channel: str) -> str | None:
 
 
 def subsystem_of(channel: str) -> str | None:
-    """Which subsystem the channel belongs to, from its prefix."""
+    """Which subsystem the channel belongs to, from its prefix.
+
+    These names run from general to specific, so where two subsystems appear the
+    later one is the actual source: `bcn_adcs_gps_pos_ecef_1` is a reading from
+    the GPS receiver, which attitude control happens to consume. Taking the
+    first match labelled it "Attitude control position", which reads as though
+    the spacecraft were reporting its orientation rather than its location.
+    """
     parts = [p for p in channel.lower().split("_") if p not in FRAME_PREFIXES]
-    for part in parts[:3]:
-        if part in SUBSYSTEM_PREFIXES:
-            return SUBSYSTEM_PREFIXES[part]
-    return None
+    found = [SUBSYSTEM_PREFIXES[p] for p in parts[:3] if p in SUBSYSTEM_PREFIXES]
+    return found[-1] if found else None
 
 
 def unit_of(channel: str, values=None) -> tuple[str | None, str]:

@@ -39,7 +39,23 @@ LIVE_EPOCHS = 30
 METADATA_FIELDS = {"observation_id", FRAME_INDEX, "timestamp"}
 COUNTER_HINTS = ("_ct", "count", "cnt", "seq", "time_since", "sec_in",
                  "time_stamp", "sub_seconds", "packet_length", "process_id",
-                 "uptime", "boot")
+                 "uptime", "boot",
+                 # Storage partition read/write pointers. These advance with
+                 # housekeeping writes, so a forecaster reproduces them almost
+                 # exactly - COSMO's scored val MSE 0.00005 against 0.7 for a
+                 # real rotation rate - while saying nothing about health.
+                 "store_part")
+
+# Orbital geometry, not spacecraft health. A GPS position component swings
+# between large positive and negative values every orbit while the distance from
+# Earth's centre stays constant - on COSMO that distance holds to 0.3% - so the
+# component is doing exactly what it should. With SatNOGS sampling in irregular
+# passes rather than continuously, a forecaster cannot track that swing and
+# reports it as a fault: COSMO's only "anomaly" was a position component moving
+# as the satellite orbited. Where the spacecraft is says nothing about whether it
+# is healthy, which is the same reason a packet counter is excluded.
+GEOMETRY_HINTS = ("pos_ecef", "_ecef", "position", "_lat", "_lon", "longitude",
+                  "latitude", "altitude", "_tle", "orbit")
 
 # Transport and framing metadata. A decoded frame carries the packet routing
 # layer alongside the payload: CubeSat Space Protocol headers, AX.25 callsigns,
@@ -118,6 +134,8 @@ def health_channels(df: pd.DataFrame, min_unique: int = 8,
         if c in METADATA_FIELDS or _is_protocol(c):
             continue
         if any(h in c.lower() for h in COUNTER_HINTS):
+            continue
+        if any(h in c.lower() for h in GEOMETRY_HINTS):
             continue
         if df[c].notna().mean() < min_coverage:
             continue          # present in too few frames to model
