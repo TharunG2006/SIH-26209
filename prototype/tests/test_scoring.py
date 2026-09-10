@@ -230,3 +230,54 @@ class TestNoveltyDetector:
         score = novelty.shift_score(test, train, window=60)
         assert np.isfinite(score).all()
         assert score[400:].max() > 0
+
+
+class TestSensorClassification:
+    """Recovering what a channel measures, and in what unit."""
+
+    def test_quantity_and_subsystem_from_the_name(self):
+        import sensors
+        d = sensors.describe("uhf_rf_chip_act_temperature")
+        assert d["quantity"] == "temperature"
+        assert d["subsystem"] == "UHF radio"
+
+    def test_a_frame_prefix_is_not_a_subsystem(self):
+        # bcn_adcs_* is an attitude-control field carried in a beacon frame.
+        # Taking the first recognised token labelled every beacon field
+        # "Beacon" and hid which subsystem it actually came from.
+        import sensors
+        assert sensors.subsystem_of("bcn_adcs_bod_rt_1") == "Attitude control"
+
+    def test_unit_resolved_from_magnitude(self):
+        # The name cannot say whether a voltage is volts or millivolts; the
+        # values can. A bus reading 8.1 is volts, 8100 is millivolts.
+        import sensors
+        volts, basis_v = sensors.unit_of("psu_bat_volt", [8.1, 8.2, 8.0])
+        milli, basis_m = sensors.unit_of("psu_bat_volt", [8100, 8200, 8000])
+        assert (volts, basis_v) == ("V", "magnitude")
+        assert (milli, basis_m) == ("mV", "magnitude")
+
+    def test_an_explicit_unit_in_the_name_wins(self):
+        # psu_bat_temp_kelvin says kelvin; no magnitude should override the
+        # satellite stating its own unit.
+        import sensors
+        unit, basis = sensors.unit_of("psu_bat_temp_kelvin", [29315, 29320])
+        assert unit == "K" and basis == "name (explicit)"
+
+    def test_abbreviations_do_not_match_mid_token(self):
+        # Unanchored, "_ma" matches "_max" and "_magnetometer" and "_k" matches
+        # almost anything, relabelling unrelated channels with a confident unit.
+        import sensors
+        assert sensors.unit_of("psu_max_current")[1] != "name (explicit)"
+        assert sensors.unit_of("adcs_magnetometer_x")[0] is None
+
+    def test_unknown_channels_are_not_guessed(self):
+        import sensors
+        d = sensors.describe("E-6")
+        assert d["quantity"] is None and d["unit"] is None
+        assert d["label"] == "E-6"
+
+    def test_non_numeric_values_do_not_crash(self):
+        import sensors
+        unit, _ = sensors.unit_of("psu_bat_volt", ["2026-09-01T00:00:00Z"])
+        assert unit is not None

@@ -24,6 +24,7 @@ if str(SRC) not in sys.path:
 from config import (MIN_RUN, SPACECRAFT, Z_MIN, channel_label,  # noqa: E402
                     has_operator_names)
 from detect import detect  # noqa: E402
+import sensors  # noqa: E402
 from sources import list_sources, load_source, utc_for  # noqa: E402
 
 st.set_page_config(page_title="Satellite Health Monitor", layout="wide",
@@ -102,6 +103,29 @@ min_run = st.sidebar.slider("Min. duration (timesteps)", 1, 20, MIN_RUN)
 
 bundle, result, stamps = load(spacecraft, z_min, min_run)
 channels = result["channels"]
+
+
+@st.cache_data(show_spinner=False)
+def channel_meaning(key: str, names: tuple[str, ...]) -> dict:
+    """What each channel measures, with units resolved from its own values."""
+    import pandas as pd
+
+    b, _ = load_source(key)
+    frame = pd.DataFrame({c: b.full_test[c] for c in names
+                          if c in b.full_test})
+    return sensors.describe_all(list(names), frame)
+
+
+MEANING = channel_meaning(spacecraft, tuple(channels))
+
+
+def pretty(ch: str) -> str:
+    """Readable name for a channel: what it measures, not just its id."""
+    d = MEANING.get(ch, {})
+    if d.get("quantity"):
+        unit = f" ({d['unit']})" if d.get("unit") else ""
+        return f"{d['label']}{unit}"
+    return channel_label(ch)
 t_axis = result["t"]
 n_steps = len(t_axis)
 
@@ -128,6 +152,15 @@ if source.is_live:
         "nothing here can be scored: it shows the system running on real "
         "telemetry, not how accurate it is. The measured accuracy figures come "
         f"from the NASA benchmark missions.{span}"
+    )
+
+_known = sum(1 for d in MEANING.values() if d.get("quantity"))
+if _known:
+    st.caption(
+        f":grey[{_known} of {len(channels)} channels identified by what they "
+        "measure. The decoders publish field names but no units, so the "
+        "quantity is read from the naming convention and the unit resolved "
+        "against the observed magnitudes — inferred, not published metadata.]"
     )
 
 if source.has_labels and not has_operator_names():
@@ -174,7 +207,7 @@ def explanation_panel(anom, key_prefix: str = "") -> None:
     if fm is not None:
         onset = fm["onset"] + t_axis[0]
         onset_utc = utc_for(stamps, onset)
-        st.caption(f"First to deviate: **{fm.get('label', fm['channel'])}** "
+        st.caption(f"First to deviate: **{pretty(fm['channel'])}** "
                    f"({fm['subsystem']}) at "
                    + (f"{onset_utc} UTC" if onset_utc else f"t={onset:,}"))
 
@@ -195,8 +228,9 @@ def explanation_panel(anom, key_prefix: str = "") -> None:
             for i, c in enumerate(chain):
                 rows.append({
                     "Order": i + 1,
-                    "Channel": c.get("label", c["channel"]),
-                    "Subsystem": c["subsystem"],
+                    "Channel": pretty(c["channel"]),
+                    "Subsystem": (MEANING.get(c["channel"], {}).get("subsystem")
+                                  or c["subsystem"]),
                     "Started at": c["onset"] + t_axis[0],
                     "Lag": "first" if c["lag"] == lead["lag"]
                            else f"+{c['lag'] - lead['lag']} steps",
@@ -215,7 +249,7 @@ def explanation_panel(anom, key_prefix: str = "") -> None:
         top = anom.contributions[:8]
         fig = go.Figure(go.Bar(
             x=[c["share_pct"] for c in top][::-1],
-            y=[c.get("label", c["channel"]) for c in top][::-1],
+            y=[pretty(c["channel"]) for c in top][::-1],
             orientation="h",
             marker_color=[severity_band(c["z"])[1] for c in top][::-1],
             text=[f"{c['share_pct']:.1f}%  ({c['z']:.1f}σ)" for c in top][::-1],
@@ -242,7 +276,7 @@ def explanation_panel(anom, key_prefix: str = "") -> None:
         st.markdown("**Expected vs actual at peak**")
         st.dataframe(
             pd.DataFrame([
-                {"Channel": c.get("label", c["channel"]),
+                {"Channel": pretty(c["channel"]),
                  "Expected": round(c["predicted"], 3),
                  "Actual": round(c["actual"], 3),
                  "Δ": round(c["deviation"], 3)}
@@ -431,7 +465,7 @@ elif mode == "Full timeline":
     step = max(1, n_steps // 900)
     z = result["z"][::step].T
     fig = go.Figure(go.Heatmap(
-        z=z, x=t_axis[::step], y=channels, colorscale="Inferno",
+        z=z, x=t_axis[::step], y=[pretty(c) for c in channels], colorscale="Inferno",
         # The colour ceiling is FIXED at the CRITICAL band rather than scaled to
         # whatever is present. Auto-scaling made a perfectly healthy satellite
         # look alarming: on COSMO the brightest colour meant 2.4 sigma, which is
