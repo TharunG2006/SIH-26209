@@ -22,6 +22,8 @@ import json
 import re
 from dataclasses import dataclass
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -116,7 +118,14 @@ def load_source(key: str):
     from live import complete_frames, load_frames
 
     channels = list(meta["channels"])
-    df = complete_frames(load_frames(meta["parquet"]), channels)
+    # Older manifests recorded the path as it was typed, which only resolves
+    # from the directory that trained the model; fall back to the capture
+    # directory, which is where every SatNOGS parquet lives regardless.
+    from satnogs import SATNOGS_DIR
+    parquet = Path(meta["parquet"])
+    if not parquet.exists():
+        parquet = SATNOGS_DIR / parquet.name
+    df = complete_frames(load_frames(parquet), channels)
     values = df[channels].to_numpy(dtype=np.float32)
     # A live frame carries no commanding block, so the command features are
     # zero-width and the models forecast from telemetry history alone.

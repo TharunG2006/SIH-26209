@@ -3,7 +3,7 @@
   "window": 48,
   "frames": 571,
   "train_frames": 342,
-  "parquet": "../data/satnogs/COSMO_68460.parquet",
+  "parquet": "C:\\Users\\Tharun\\Documents\\SIH Project\\prototype\\data\\satnogs\\COSMO_68460.parquet",
   "block": "bcn",
   "channels": {
     "bcn_adcs_bod_rt_3": {

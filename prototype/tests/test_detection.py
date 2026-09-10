@@ -291,3 +291,31 @@ def test_index_digits_do_not_defeat_quantity_matching():
     assert sensors.quantity_of("bcn_adcs_rw_sp_1") == "rotation rate"
     # ...but a bare digit suffix must not turn unrelated names into readings.
     assert sensors.quantity_of("csp_hdr_source") is None
+
+
+def test_live_manifest_resolves_from_any_directory(tmp_path, monkeypatch):
+    """A capture path recorded as typed only resolves from the training shell.
+
+    COSMO was retrained from `prototype/src`, so its manifest read
+    `../data/satnogs/COSMO_68460.parquet`; the dashboard runs from
+    `prototype/` and could not open it.
+    """
+    import json
+
+    import sources
+
+    cap = tmp_path / "captures"
+    cap.mkdir()
+    (cap / "DEMO_1.parquet").write_bytes(b"")
+    monkeypatch.setattr(sources, "_live_meta", lambda: {
+        "DEMO": {"channels": ["a"], "parquet": "../nowhere/DEMO_1.parquet"}})
+    monkeypatch.setattr("satnogs.SATNOGS_DIR", cap)
+
+    # The recorded path is unreachable, so the capture directory must be tried;
+    # reaching pandas at all proves the fallback resolved (the file is empty).
+    try:
+        sources.load_source("DEMO")
+    except FileNotFoundError as e:
+        raise AssertionError(f"fell back to nothing: {e}") from None
+    except Exception:
+        pass    # any parse error means the path was found and opened

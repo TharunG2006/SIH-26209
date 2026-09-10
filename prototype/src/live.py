@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import pathlib
 import re
 import sys
 
@@ -177,8 +178,12 @@ def train_live(df: pd.DataFrame, channels: list[str], name: str,
     cmds = np.zeros((len(df), 0), dtype=np.float32)
     # The capture path and block are recorded so the dashboard and the database
     # can reload exactly the series these models were fitted on.
+    # Absolute: the manifest is read back by the dashboard and the database
+    # loader, which run from their own directories, so a path relative to
+    # whatever shell trained the model resolves to nothing there.
     meta = {"satellite": name, "window": window, "frames": len(df),
-            "train_frames": cut, "parquet": str(parquet) if parquet else None,
+            "train_frames": cut,
+            "parquet": str(pathlib.Path(parquet).resolve()) if parquet else None,
             "block": block, "channels": {}}
 
     for i, ch in enumerate(channels, 1):
