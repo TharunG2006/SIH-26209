@@ -339,3 +339,74 @@ if __name__ == "__main__":
     span = f"{df['timestamp'].iloc[0]} -> {df['timestamp'].iloc[-1]}"
     print(f"\nsaved {len(df)} frames to {path}")
     print(f"real UTC span: {span}")
+
+
+def refresh_capture(norad_id: int, hours: int = 12,
+                    max_passes: int = 6, verbose: bool = True) -> dict:
+    """Pull the newest passes and merge them into the stored capture.
+
+    A satellite is only heard when it passes over a ground station, so telemetry
+    arrives in bursts every hour or two rather than as a continuous stream -
+    which is also how a real operations centre receives it. This fetches
+    whatever has arrived since the last call and appends it, so the dashboard
+    shows current data rather than a fixed snapshot.
+
+    Frames already downloaded are served from the cache, so a refresh costs only
+    the genuinely new ones.
+    """
+    info = satellite_info(norad_id)
+    if info is None:
+        raise ValueError(f"NORAD {norad_id} not found")
+    name = info["name"]
+    dec = _decoder_for(name, available_decoders())
+    if dec is None:
+        raise ValueError(f"no decoder for {name}")
+    cls = _decoder_class(dec)
+
+    # Bounded on purpose. A day's worth of passes is several hundred frames and
+    # each is an HTTP request, which turns a "refresh" into a multi-minute wait.
+    # Only the newest few passes are fetched - that is what "what has arrived
+    # since I last looked" actually means.
+    days = max(1, (hours + 23) // 24)
+    obs = fetch_observations(norad_id, days=days, verbose=False)
+    obs = sorted(obs, key=lambda o: o.get("start", ""), reverse=True)[:max_passes]
+    rows = []
+    for o in obs:
+        rows.extend(decode_observation(o, cls))
+    if not rows:
+        return {"satellite": name, "new_frames": 0, "total_frames": 0,
+                "newest": None}
+
+    fresh = pd.DataFrame(rows)
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_")
+    path = SATNOGS_DIR / f"{slug}_{norad_id}.parquet"
+
+    if path.exists():
+        existing = pd.read_parquet(path)
+        before = len(existing)
+        combined = pd.concat([existing, fresh], ignore_index=True)
+    else:
+        before = 0
+        combined = fresh
+
+    # De-duplicate on the whole row. Every frame in one pass carries that pass's
+    # start time, so keying on timestamp - even with the observation id - treats
+    # all of a pass's frames as one and throws the rest away: a refresh collapsed
+    # a 536-frame capture to 28. Two frames are the same only if every decoded
+    # field matches.
+    combined = combined.drop_duplicates(
+        subset=[c for c in combined.columns if c != FRAME_INDEX])
+    combined = combined.sort_values("timestamp").reset_index(drop=True)
+    combined[FRAME_INDEX] = np.arange(len(combined))
+
+    SATNOGS_DIR.mkdir(parents=True, exist_ok=True)
+    combined.to_parquet(path, index=False)
+
+    out = {"satellite": name, "new_frames": len(combined) - before,
+           "total_frames": len(combined),
+           "newest": str(combined["timestamp"].iloc[-1]),
+           "path": str(path)}
+    if verbose:
+        print(f"{name}: +{out['new_frames']} new frames "
+              f"({out['total_frames']} total), newest {out['newest']}")
+    return out

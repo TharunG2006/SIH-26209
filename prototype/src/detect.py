@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 import sys
 
+import pathlib
+
 import numpy as np
 import torch
 
@@ -44,8 +46,57 @@ THRESHOLD_SIGNAL = "err"
 _FORECAST_CACHE: dict[str, tuple] = {}
 
 
-def clear_forecast_cache() -> None:
+# Forecasting a spacecraft means running every channel model over every
+# reading, which takes minutes. Nothing about it changes between processes, so
+# the result is also cached on disk - otherwise the dashboard pays that cost on
+# every start, which is unusable for a live demo.
+_DISK_CACHE = MODEL_DIR / "forecast_cache"
+
+
+def clear_forecast_cache(disk: bool = False) -> None:
     _FORECAST_CACHE.clear()
+    if disk and _DISK_CACHE.is_dir():
+        for f in _DISK_CACHE.glob("*.npz"):
+            f.unlink()
+
+
+def _disk_path(spacecraft: str, per_channel) -> "pathlib.Path":
+    return _DISK_CACHE / f"{spacecraft.lower()}_{per_channel}.npz"
+
+
+def _load_disk(spacecraft: str, per_channel, fingerprint):
+    """Cached forecast, if it was produced by exactly these checkpoints."""
+    path = _disk_path(spacecraft, per_channel)
+    if not path.exists():
+        return None
+    try:
+        blob = np.load(path, allow_pickle=True)
+        if tuple(blob["fingerprint"]) != tuple(fingerprint):
+            return None          # models were retrained; recompute
+        return (list(blob["channels"]), blob["y_true"], blob["y_pred"],
+                blob["t"], str(blob["forecaster"]),
+                dict(blob["lengths"].item()))
+    except Exception:
+        return None              # a corrupt cache must never break a run
+
+
+def _save_disk(spacecraft: str, per_channel, fingerprint, payload) -> None:
+    channels, y_true, y_pred, t, forecaster, lengths = payload
+    _DISK_CACHE.mkdir(parents=True, exist_ok=True)
+    try:
+        np.savez_compressed(
+            _disk_path(spacecraft, per_channel),
+            fingerprint=np.array(fingerprint, dtype=object),
+            channels=np.array(channels, dtype=object),
+            y_true=y_true, y_pred=y_pred, t=t,
+            forecaster=forecaster, lengths=np.array(lengths, dtype=object),
+        )
+    except Exception as exc:
+        # Caching is an optimisation and must never break a run - but silently
+        # discarding the error meant the cache appeared to work while writing
+        # nothing, and the dashboard paid the full cost on every start.
+        print(f"[detect] could not write forecast cache: "
+              f"{type(exc).__name__}: {exc}", flush=True)
 
 
 def _model_fingerprint(spacecraft: str) -> tuple:
@@ -530,10 +581,13 @@ def detect(bundle: TelemetryBundle, z_min: float | None = None,
     single joint multivariate model.  Left as None it prefers the per-channel
     ensemble and falls back to the joint model if it has not been trained.
     """
-    key = (bundle.spacecraft, per_channel,
-           _model_fingerprint(bundle.spacecraft))
-    if key in _FORECAST_CACHE:
-        channels, y_true, y_pred, t, forecaster, lengths = _FORECAST_CACHE[key]
+    fingerprint = _model_fingerprint(bundle.spacecraft)
+    key = (bundle.spacecraft, per_channel, fingerprint)
+    cached = _FORECAST_CACHE.get(key) or _load_disk(
+        bundle.spacecraft, per_channel, fingerprint)
+    if cached is not None:
+        _FORECAST_CACHE[key] = cached
+        channels, y_true, y_pred, t, forecaster, lengths = cached
     else:
         channels = list(bundle.channels)
         ensemble = (load_channel_detectors(bundle.spacecraft)
@@ -550,7 +604,9 @@ def detect(bundle: TelemetryBundle, z_min: float | None = None,
             y_true, y_pred, t = forecast(net, scaler, bundle.test, bundle.test_cmd)
             lengths = bundle.channel_lengths()
             forecaster = "joint multivariate"
-        _FORECAST_CACHE[key] = (channels, y_true, y_pred, t, forecaster, lengths)
+        payload = (channels, y_true, y_pred, t, forecaster, lengths)
+        _FORECAST_CACHE[key] = payload
+        _save_disk(bundle.spacecraft, per_channel, fingerprint, payload)
     err, z = error_scores(y_true, y_pred)
 
     events = channel_events(z, channels, z_min=z_min, min_run=min_run, err=err)

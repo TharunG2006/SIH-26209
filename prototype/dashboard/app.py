@@ -29,6 +29,10 @@ from sources import list_sources, load_source, utc_for  # noqa: E402
 st.set_page_config(page_title="Satellite Health Monitor", layout="wide",
                    page_icon="🛰️")
 
+# The severity band an alert must reach to count as critical. Also the fixed
+# ceiling of the deviation heatmap, so colour is comparable across satellites.
+CRITICAL_SIGMA = 8.0
+
 SEVERITY_BANDS = [
     (8.0, "CRITICAL", "#d62728"),
     (5.0, "HIGH", "#ff7f0e"),
@@ -54,8 +58,28 @@ def load(spacecraft: str, z_min: float | None, min_run: int):
 # ---------------------------------------------------------------- sidebar ---
 st.sidebar.title("🛰️ Mission Control")
 SOURCES = {s.key: s for s in list_sources()}
+
+
+def _cached_first(keys: list[str]) -> int:
+    """Index of the first source whose forecast is already on disk.
+
+    Forecasting a spacecraft takes minutes; the result is cached, but the
+    dropdown used to default to whichever source happened to be listed first.
+    If that one was uncached the dashboard sat computing it before the user
+    could pick anything else - so the default is a source that opens instantly.
+    """
+    import detect as _D
+
+    for i, k in enumerate(keys):
+        if _D._disk_path(k, None).exists():
+            return i
+    return 0
+
+
+_keys = list(SOURCES)
 spacecraft = st.sidebar.selectbox(
-    "Satellite", list(SOURCES),
+    "Satellite", _keys,
+    index=_cached_first(_keys),
     format_func=lambda k: SOURCES[k].label,
     help="Benchmark missions carry NASA's labelled anomalies; live captures "
          "carry real channel names and UTC timestamps but no ground truth.",
@@ -310,7 +334,7 @@ if mode == "Live replay":
         floor = (z_min * 1.5) if z_min is not None else 4.0
         return max(floor, peak * 1.15)
 
-    def draw(upto: int, slot) -> None:
+    def draw(upto: int) -> None:
         upto = max(1, min(n_steps, upto))
         lo = max(0, upto - tail)
         visible = result["fleet"][lo:upto]
@@ -334,11 +358,16 @@ if mode == "Live replay":
                           xaxis_title="timestep",
                           yaxis_title="anomaly score (σ)",
                           yaxis_range=[0, _y_top(visible)])
-        slot.plotly_chart(fig, use_container_width=True, key="replay_chart")
+        # Drawn straight into the fragment rather than into an st.empty()
+        # placeholder: a placeholder created fresh on each rerun was being
+        # cleared before the chart landed in it, leaving a blank gap where the
+        # plot should be. The fragment already replaces its own output.
+        st.plotly_chart(fig, use_container_width=True,
+                        key=f"replay_chart_{upto}")
 
     # run_every is re-evaluated on every script run, so toggling the play flag
     # starts and stops the auto-advance without restarting the app.
-    @st.fragment(run_every="0.25s" if st.session_state.replay_playing else None)
+    @st.fragment(run_every="0.6s" if st.session_state.replay_playing else None)
     def replay_frame() -> None:
         if st.session_state.replay_playing:
             st.session_state.replay_pos = min(n_steps,
@@ -352,7 +381,7 @@ if mode == "Live replay":
         st.progress(upto / n_steps,
                     text=f"t = {now:,} of {int(t_axis[-1]):,}  "
                          f"({upto:,} / {n_steps:,} readings)")
-        draw(upto, st.empty())
+        draw(upto)
 
         fired = [a for a in anomalies if a.start <= now]
         if fired:
@@ -403,17 +432,28 @@ elif mode == "Full timeline":
     z = result["z"][::step].T
     fig = go.Figure(go.Heatmap(
         z=z, x=t_axis[::step], y=channels, colorscale="Inferno",
-        # Shorter channels are NaN-padded, and np.percentile propagates NaN
-        # straight into the colour scale.
-        zmin=0, zmax=float(np.nanpercentile(result["z"], 99.7)),
+        # The colour ceiling is FIXED at the CRITICAL band rather than scaled to
+        # whatever is present. Auto-scaling made a perfectly healthy satellite
+        # look alarming: on COSMO the brightest colour meant 2.4 sigma, which is
+        # ordinary noise, while the same colour on SMAP meant a real 600-sigma
+        # fault. Brightness now means the same thing on every satellite, so a
+        # quiet spacecraft reads as quiet.
+        zmin=0, zmax=CRITICAL_SIGMA,
         colorbar=dict(title="σ"),
     ))
     fig.update_layout(height=max(420, 15 * len(channels)),
                       margin=dict(l=0, r=0, t=10, b=0), xaxis_title="timestep")
     st.plotly_chart(fig, use_container_width=True)
-    st.caption("Each row is one telemetry channel. Bright bands show exactly "
-               "which channels drove each event — this is the attribution the "
-               "alert cards are built from.")
+    peak = float(np.nanmax(result["z"])) if np.isfinite(result["z"]).any() else 0.0
+    st.caption(
+        f"Each row is one telemetry channel. The colour scale is fixed at "
+        f"0–{CRITICAL_SIGMA:.0f}σ so brightness means the same thing on every "
+        f"satellite. This capture peaks at **{peak:.1f}σ** — "
+        + ("mostly dark means nothing here is anomalous, which is what a healthy "
+           "spacecraft should look like."
+           if peak < CRITICAL_SIGMA else
+           "bright bands are the channels that drove each detected event.")
+    )
 
 # ------------------------------------------------------------- anomaly log ---
 else:
