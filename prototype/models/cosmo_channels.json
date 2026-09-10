@@ -1,26 +1,58 @@
 {
   "satellite": "COSMO",
-  "window": 24,
-  "frames": 198,
-  "train_frames": 118,
+  "window": 48,
+  "frames": 571,
+  "train_frames": 342,
+  "parquet": "../data/satnogs/COSMO_68460.parquet",
+  "block": "bcn",
   "channels": {
-    "bcn_adcs_gps_pos_ecef_2": {
-      "val_mse": 0.10581880062818527
-    },
-    "bcn_adcs_gps_pos_ecef_1": {
-      "val_mse": 3.30745792388916
-    },
-    "bcn_adcs_gps_pos_ecef_3": {
-      "val_mse": 0.0022889941465109587
-    },
     "bcn_adcs_bod_rt_3": {
-      "val_mse": 1.0865203142166138
+      "val_mse": 0.6870589852333069
     },
     "bcn_adcs_att_resid_1": {
-      "val_mse": 0.9444430470466614
+      "val_mse": 0.5793695449829102
     },
     "bcn_adcs_bod_rt_2": {
-      "val_mse": 1.0694442987442017
+      "val_mse": 0.7942116856575012
+    },
+    "bcn_adcs_bod_rt_1": {
+      "val_mse": 0.7188808917999268
+    },
+    "bcn_adcs_att_resid_2": {
+      "val_mse": 0.8946087956428528
+    },
+    "bcn_adcs_att_resid_3": {
+      "val_mse": 0.8946087956428528
+    },
+    "bcn_sun_pt_err": {
+      "val_mse": 0.17757931351661682
+    },
+    "bcn_mag_vec_bod_3": {
+      "val_mse": 0.2122698426246643
+    },
+    "bcn_mag_vec_bod_1": {
+      "val_mse": 0.03951188921928406
+    },
+    "bcn_mag_vec_bod_2": {
+      "val_mse": 0.3922511339187622
+    },
+    "bcn_adcs_rw_sp_2": {
+      "val_mse": 0.38621240854263306
+    },
+    "bcn_sa_2_v": {
+      "val_mse": 0.17184218764305115
+    },
+    "bcn_sa_1_v": {
+      "val_mse": 0.17222003638744354
+    },
+    "bcn_adcs_rw_sp_1": {
+      "val_mse": 0.5939885377883911
+    },
+    "bcn_adcs_rw_sp_3": {
+      "val_mse": 0.8223279118537903
+    },
+    "bcn_adcs_rw_1_t": {
+      "val_mse": 0.32048410177230835
     }
   }
 }

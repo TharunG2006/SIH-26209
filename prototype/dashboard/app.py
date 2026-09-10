@@ -109,13 +109,15 @@ channels = result["channels"]
 def channel_meaning(key: str, names: tuple[str, ...]) -> dict:
     """What each channel measures, with units resolved from its own values.
 
-    Each channel is described against its own array rather than a shared
-    DataFrame: channels run to different lengths once each is forecast at its
-    full extent - 4,453 to 8,640 readings on SMAP - so building one frame from
-    them fails outright.
+    Channels are passed as separate arrays rather than a shared DataFrame: they
+    run to different lengths once each is forecast at its full extent - 4,453 to
+    8,640 readings on SMAP - so building one frame from them fails outright.
+    Redundant siblings are still resolved together, so three identical solar
+    panels cannot end up labelled in three different units.
     """
     b, _ = load_source(key)
-    return {c: sensors.describe(c, b.full_test.get(c)) for c in names}
+    return sensors.describe_group(names, {c: b.full_test.get(c) for c in names
+                                          if b.full_test.get(c) is not None})
 
 
 MEANING = channel_meaning(spacecraft, tuple(channels))

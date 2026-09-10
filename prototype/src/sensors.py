@@ -31,17 +31,23 @@ import numpy as np
 
 # Ordered: the first pattern that matches wins, so the more specific ones come
 # first. `_t` is last because it is the weakest signal.
+# A trailing index digit defeats a word boundary: `amp\b` does not match
+# `psu_pv_in_amp2`, and these decoders number every redundant channel that way,
+# so a pattern that can carry an index ends with one of these instead.
+IDX = r"\d*(?:$|_)"
+
 QUANTITY_PATTERNS: list[tuple[str, str]] = [
-    (r"temperature|_temp\b|_temp_|thermistor", "temperature"),
-    (r"rssi|signal_strength|_snr\b", "signal strength"),
-    (r"power\b|_pwr\b|watt", "power"),
-    (r"volt|_v\b|voltage", "voltage"),
-    (r"amp\b|_amp_|current|_ma\b|_i\b", "current"),
-    (r"pos_ecef|position|_lat\b|_lon\b|altitude", "position"),
-    (r"bod_rt|rot_rate|gyro|angular", "rotation rate"),
-    (r"att_resid", "pointing error"),
+    (r"temperature|_temp(?:$|_)|thermistor", "temperature"),
+    (r"rssi|signal_strength|_snr(?:$|_)", "signal strength"),
+    (rf"power{IDX}|_pwr{IDX}|watt", "power"),
+    (r"volt|voltage|_v(?:$|_)", "voltage"),
+    (rf"amp{IDX}|_amp_|current|_ma(?:$|_)|_i(?:$|_)", "current"),
+    (r"pos_ecef|position|_lat(?:$|_)|_lon(?:$|_)|altitude", "position"),
+    (rf"bod_rt|rot_rate|gyro|angular|rw_sp{IDX}|wheel_speed", "rotation rate"),
+    (r"att_resid|pt_err|point\w*_err", "pointing error"),
+    (r"mag_vec|magnetometer|_mag(?:$|_)", "magnetic field"),
     (r"quaternion|_att_|attitude", "attitude"),
-    (r"pressure|_bar\b", "pressure"),
+    (r"pressure|_bar(?:$|_)", "pressure"),
     (r"_t$|_t_", "temperature"),
 ]
 
@@ -91,6 +97,13 @@ SUBSYSTEM_PREFIXES = {
     "pld": "Payload",
     "thermal": "Thermal",
     "gps": "Navigation",
+    # `sa` is the solar array itself and `pv` the photovoltaic input on the
+    # power board; both name the panels rather than the bus they feed.
+    "sa": "Solar array",
+    "pv": "Solar array",
+    "sun": "Sun sensor",
+    "mag": "Magnetometer",
+    "rw": "Reaction wheel",
 }
 
 
@@ -181,15 +194,47 @@ def describe(channel: str, values=None) -> dict:
     }
 
 
-def describe_all(channels, frame=None) -> dict[str, dict]:
-    """Describe every channel, using the data for unit resolution when given."""
+def _stem(channel: str) -> str:
+    """The channel name without its redundancy index, e.g. `psu_pv_in_power`.
+
+    The index is sometimes glued straight onto the word (`psu_pv_in_power3`) and
+    sometimes separated (`bcn_mag_vec_bod_3`), so both forms are stripped.
+    """
+    return re.sub(r"_?\d+$", "", channel.lower())
+
+
+def describe_group(channels, values_by_channel=None) -> dict[str, dict]:
+    """Describe channels together, resolving units across redundant siblings.
+
+    `psu_pv_in_power1/2/3` are three identical solar panels, so they report in
+    the same unit. Resolving each one against its own magnitude let the quietest
+    panel land in a different bracket from the other two, and the dashboard
+    showed one in watts beside two in milliwatts. Pooling the values of every
+    channel that differs only by a trailing index decides the scale once.
+    """
+    values_by_channel = values_by_channel or {}
+    pooled: dict[str, list] = {}
+    for ch in channels:
+        v = values_by_channel.get(ch)
+        if v is not None:
+            pooled.setdefault(_stem(ch), []).append(np.asarray(v).ravel())
+
     out = {}
     for ch in channels:
-        vals = None
-        if frame is not None and ch in getattr(frame, "columns", []):
-            vals = frame[ch].to_numpy()
+        group = pooled.get(_stem(ch))
+        vals = (np.concatenate(group) if group
+                else values_by_channel.get(ch))
         out[ch] = describe(ch, vals)
     return out
+
+
+def describe_all(channels, frame=None) -> dict[str, dict]:
+    """Describe every channel, using the data for unit resolution when given."""
+    vals = {}
+    for ch in channels:
+        if frame is not None and ch in getattr(frame, "columns", []):
+            vals[ch] = frame[ch].to_numpy()
+    return describe_group(channels, vals)
 
 
 if __name__ == "__main__":

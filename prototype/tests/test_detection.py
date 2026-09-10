@@ -260,3 +260,34 @@ def test_orbital_geometry_is_not_a_health_channel():
     assert not [c for c in keep if "ecef" in c], "orbital position was kept"
     assert not [c for c in keep if "store_part" in c], "a storage pointer was kept"
     assert "bcn_adcs_bod_rt_1" in keep, "a real health channel was dropped"
+
+
+def test_redundant_siblings_share_a_unit():
+    """Three identical solar panels cannot report in three different units.
+
+    Resolving each channel against its own magnitude put the quietest panel in a
+    different bracket from the other two, and the dashboard showed one in watts
+    beside two in milliwatts.
+    """
+    import numpy as np
+
+    import sensors
+
+    values = {
+        "psu_pv_in_power1": np.full(50, 4000.0),
+        "psu_pv_in_power2": np.full(50, 3800.0),
+        "psu_pv_in_power3": np.full(50, 400.0),   # quiet panel, same unit
+    }
+    units = {d["unit"] for d in
+             sensors.describe_group(list(values), values).values()}
+    assert units == {"mW"}, f"siblings disagreed on the unit: {units}"
+
+
+def test_index_digits_do_not_defeat_quantity_matching():
+    """`psu_pv_in_amp2` is a current; a word boundary never matched it."""
+    import sensors
+    assert sensors.quantity_of("psu_pv_in_amp2") == "current"
+    assert sensors.quantity_of("psu_pv_in_power3") == "power"
+    assert sensors.quantity_of("bcn_adcs_rw_sp_1") == "rotation rate"
+    # ...but a bare digit suffix must not turn unrelated names into readings.
+    assert sensors.quantity_of("csp_hdr_source") is None
