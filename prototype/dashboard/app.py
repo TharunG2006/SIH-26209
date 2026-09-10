@@ -107,13 +107,15 @@ channels = result["channels"]
 
 @st.cache_data(show_spinner=False)
 def channel_meaning(key: str, names: tuple[str, ...]) -> dict:
-    """What each channel measures, with units resolved from its own values."""
-    import pandas as pd
+    """What each channel measures, with units resolved from its own values.
 
+    Each channel is described against its own array rather than a shared
+    DataFrame: channels run to different lengths once each is forecast at its
+    full extent - 4,453 to 8,640 readings on SMAP - so building one frame from
+    them fails outright.
+    """
     b, _ = load_source(key)
-    frame = pd.DataFrame({c: b.full_test[c] for c in names
-                          if c in b.full_test})
-    return sensors.describe_all(list(names), frame)
+    return {c: sensors.describe(c, b.full_test.get(c)) for c in names}
 
 
 MEANING = channel_meaning(spacecraft, tuple(channels))
