@@ -185,7 +185,7 @@ channels = result["channels"]
 
 @st.cache_data(show_spinner=False)
 def channel_meaning(key: str, names: tuple[str, ...]) -> dict:
-    """What each channel measures, with units resolved from its own values. (Cache invalidated)
+    """What each channel measures, with units resolved from its own values. (Cache invalidated 2)
 
     Channels are passed as separate arrays rather than a shared DataFrame: they
     run to different lengths once each is forecast at its full extent - 4,453 to

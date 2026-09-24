@@ -175,10 +175,13 @@ def describe(channel: str, values=None) -> dict:
     quantity = quantity_of(channel)
     subsystem = subsystem_of(channel)
     unit, basis = unit_of(channel, values)
+    m = re.search(r"_?(\d+)$", channel.lower())
+    idx = f" {m.group(1)}" if m else ""
+    
     if quantity and subsystem:
-        label = f"{subsystem} {quantity}"
+        label = f"{subsystem} {quantity}{idx}"
     elif quantity:
-        label = quantity.capitalize()
+        label = f"{quantity.capitalize()}{idx}"
     else:
         label = channel
     return {
