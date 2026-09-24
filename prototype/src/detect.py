@@ -27,6 +27,42 @@ from train_channels import CH_DROPOUT, CH_HIDDEN, CH_LAYERS
 
 SIGMA = "σ"
 
+def rmt_tension(data: np.ndarray, window: int = 60) -> np.ndarray:
+    """Computes the System Tension (maximum eigenvalue z-score) via Random Matrix Theory.
+    
+    A structural tension spike indicates the telemetry channels are mathematically
+    detaching from their normal Marchenko-Pastur distribution, providing an
+    early warning precursor to failure.
+    """
+    T_len, C = data.shape
+    lambdas = np.zeros(T_len)
+    if T_len <= window:
+        return lambdas
+        
+    for i in range(window, T_len):
+        view = data[i-window:i, :]
+        std = view.std(axis=0)
+        valid = std > 1e-9
+        if not np.any(valid):
+            lambdas[i] = 0
+            continue
+            
+        normed = (view[:, valid] - view[:, valid].mean(axis=0)) / std[valid]
+        corr = (normed.T @ normed) / window
+        try:
+            eigvals = np.linalg.eigvalsh(corr)
+            lambdas[i] = eigvals.max() if len(eigvals) > 0 else 0
+        except np.linalg.LinAlgError:
+            lambdas[i] = lambdas[i-1]
+            
+    med = np.median(lambdas[window:])
+    mad = np.median(np.abs(lambdas[window:] - med)) * 1.4826
+    scale = max(mad, 1e-9)
+    z_lambda = (lambdas - med) / scale
+    
+    z_lambda[:window] = 0.0
+    return z_lambda
+
 # Detection knobs, kept as module globals so tune.py can vary them without
 # re-importing.  Defaults mirror config.py.
 Z_SEARCH_MAX = 10.5
@@ -628,6 +664,8 @@ def detect(bundle: TelemetryBundle, z_min: float | None = None,
         ))
     anomalies.sort(key=lambda a: a.severity, reverse=True)
 
+    tension_full = rmt_tension(bundle.test, window=60)
+
     return {
         "spacecraft": bundle.spacecraft,
         "forecaster": forecaster,
@@ -643,6 +681,7 @@ def detect(bundle: TelemetryBundle, z_min: float | None = None,
         "fleet": np.nanmax(z, axis=1),   # display only - detection is per channel
         "events": events,         # per-channel detections, for evaluation
         "anomalies": anomalies,
+        "rmt_tension": tension_full[np.clip(t.astype(int), 0, len(tension_full) - 1)],
     }
 
 

@@ -91,13 +91,13 @@ if __name__ == "__main__":
 
     names = list(SPACECRAFT)
     report = {}
-    for tune_on, report_on in ((names[1], names[0]), (names[0], names[1])):
-        print(f"\n=== tune on {tune_on}, report on {report_on} ===")
-        r = tune(tune_on, report_on, verbose=not args.quiet)
-        report[report_on] = r
+    for tune_target, report_target in ((names[1], names[0]), (names[0], names[1])):
+        print(f"\n=== tune on {tune_target}, report on {report_target} ===")
+        r = tune(tune_target, report_target, verbose=not args.quiet)
+        report[report_target] = r
         h = r["held_out_result"]
-        print(f"  chosen config (from {tune_on}): {r['chosen_config']}")
-        print(f"  HELD-OUT {report_on}: precision {h['precision']:.3f}  "
+        print(f"  chosen config (from {tune_target}): {r['chosen_config']}")
+        print(f"  HELD-OUT {report_target}: precision {h['precision']:.3f}  "
               f"recall {h['recall']:.3f}  F1 {h['f1']:.3f}")
         print(f"  attribution top-1 {h['top1_channel_accuracy']} "
               f"(over {h['events_matched_to_labels']} matched events)")

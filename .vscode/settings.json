@@ -1,0 +1,10 @@
+{
+    "python.analysis.extraPaths": [
+        "prototype/src",
+        "c:/Users/Tharun/Documents/SIH Project/prototype/src"
+    ],
+    "python.autoComplete.extraPaths": [
+        "prototype/src",
+        "c:/Users/Tharun/Documents/SIH Project/prototype/src"
+    ]
+}

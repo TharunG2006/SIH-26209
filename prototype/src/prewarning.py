@@ -78,7 +78,7 @@ def lead_times(result: dict, bundle, min_run: int = MIN_RUN,
     """
     import detect as D
 
-    err, z = result["err"], result["z"]
+    err = result["err"]
     t = result["t"]
     offset = int(t[0])
     channels = result["channels"]

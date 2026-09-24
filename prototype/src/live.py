@@ -28,7 +28,6 @@ import pandas as pd
 import torch
 
 from config import MODEL_DIR, REPORT_DIR
-from model import ChannelScaler
 from satnogs import FRAME_INDEX, SATNOGS_DIR, usable_channels
 
 # A few thousand frames cannot support a 250-step history.
@@ -239,7 +238,7 @@ def detect_live(df: pd.DataFrame, channels: list[str], name: str,
         full_test={c: df[c].to_numpy(dtype=np.float32) for c in channels},
         full_cmd={c: cmds for c in channels},
     )
-    D.clear_forecast_cache()
+    D.clear_forecast_cache(disk=True)
     return D.detect(bundle, min_run=min_run)
 
 

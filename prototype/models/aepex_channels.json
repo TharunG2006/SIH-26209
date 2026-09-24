@@ -1,0 +1,58 @@
+{
+  "satellite": "AEPEX",
+  "window": 48,
+  "frames": 832,
+  "train_frames": 499,
+  "parquet": "C:\\Users\\Tharun\\Documents\\SIH Project\\prototype\\data\\satnogs\\AEPEX_68506.parquet",
+  "block": "sw",
+  "channels": {
+    "sw_adcs_body_quat1": {
+      "val_mse": 0.08184933662414551
+    },
+    "sw_adcs_body_quat2": {
+      "val_mse": 0.08457883447408676
+    },
+    "sw_adcs_body_quat3": {
+      "val_mse": 0.2012830376625061
+    },
+    "sw_adcs_body_quat4": {
+      "val_mse": 0.2079787254333496
+    },
+    "sw_adcs_body_rt1": {
+      "val_mse": 1.1586631536483765
+    },
+    "sw_adcs_body_rt3": {
+      "val_mse": 0.9053674936294556
+    },
+    "sw_adcs_body_rt2": {
+      "val_mse": 0.0351625457406044
+    },
+    "sw_adcs_sun_vec2": {
+      "val_mse": 0.12455110251903534
+    },
+    "sw_adcs_wheel_sp1": {
+      "val_mse": 0.18014150857925415
+    },
+    "sw_adcs_wheel_sp3": {
+      "val_mse": 0.14801330864429474
+    },
+    "sw_ana_sa2_v": {
+      "val_mse": 0.11682775616645813
+    },
+    "sw_ana_sa1_v": {
+      "val_mse": 0.11728258430957794
+    },
+    "sw_adcs_wheel_sp2": {
+      "val_mse": 0.01978827826678753
+    },
+    "sw_adcs_analogs_motor2_temp": {
+      "val_mse": 0.24763241410255432
+    },
+    "sw_adcs_analogs_motor3_temp": {
+      "val_mse": 0.21076390147209167
+    },
+    "sw_adcs_analogs_motor1_temp": {
+      "val_mse": 0.19619612395763397
+    }
+  }
+}

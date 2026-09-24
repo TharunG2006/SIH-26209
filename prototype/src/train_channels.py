@@ -163,6 +163,7 @@ def train_spacecraft_channels(name: str, epochs: int = CH_EPOCHS,
             "stride": CH_STRIDE, "workers": WORKERS, "channels": {}}
     t0 = time.time()
     done = 0
+
     def run(batch, workers):
         """Train a batch, returning whatever completed before any failure."""
         nonlocal done

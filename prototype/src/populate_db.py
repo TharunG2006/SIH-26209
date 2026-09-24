@@ -11,9 +11,9 @@ import json
 import sys
 
 import db
-from config import REPORT_DIR, SPACECRAFT
+from config import REPORT_DIR
 from detect import detect
-from sources import get_source, list_sources, load_source, utc_for
+from sources import get_source, list_sources, load_source
 
 # NORAD catalogue numbers for the two benchmark spacecraft.  MSL is the cruise
 # stage's catalogue entry; the rover itself is on Mars and has no orbital

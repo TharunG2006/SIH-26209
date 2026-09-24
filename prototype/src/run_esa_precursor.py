@@ -8,14 +8,13 @@ anomalies are annotated Subsequence. If a precursor exists anywhere, it is here.
 from __future__ import annotations
 
 import sys
-import warnings
-
-warnings.filterwarnings("ignore")
-
 import numpy as np
 
 import esa
 import precursor as P
+
+import warnings
+warnings.filterwarnings("ignore")
 
 MISSION = sys.argv[1] if len(sys.argv) > 1 else "Mission1"
 
