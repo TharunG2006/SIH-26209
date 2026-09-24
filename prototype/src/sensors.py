@@ -43,7 +43,7 @@ QUANTITY_PATTERNS: list[tuple[str, str]] = [
     (r"volt|voltage|_v(?:$|_)", "voltage"),
     (rf"amp{IDX}|_amp_|current|_ma(?:$|_)|_i(?:$|_)", "current"),
     (r"pos_ecef|position|_lat(?:$|_)|_lon(?:$|_)|altitude", "position"),
-    (rf"bod_rt|rot_rate|gyro|angular|rw_sp{IDX}|wheel_speed", "rotation rate"),
+    (rf"bod_rt|body_rt|rot_rate|gyro|angular|rw_sp{IDX}|wheel_sp{IDX}|wheel_speed", "rotation rate"),
     (r"att_resid|pt_err|point\w*_err", "pointing error"),
     (r"mag_vec|magnetometer|_mag(?:$|_)", "magnetic field"),
     (r"quaternion|_att_|attitude", "attitude"),
