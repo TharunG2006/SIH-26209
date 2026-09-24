@@ -25,6 +25,8 @@ from config import (MIN_RUN, SPACECRAFT, Z_MIN, channel_label,  # type: ignore #
                     has_operator_names)
 from detect import detect  # type: ignore # noqa: E402
 import sensors  # type: ignore # noqa: E402
+import importlib
+importlib.reload(sensors)
 from sources import list_sources, load_source, utc_for  # type: ignore # noqa: E402
 from space_weather import get_space_weather  # type: ignore # noqa: E402
 
@@ -185,7 +187,7 @@ channels = result["channels"]
 
 @st.cache_data(show_spinner=False)
 def channel_meaning(key: str, names: tuple[str, ...]) -> dict:
-    """What each channel measures, with units resolved from its own values. (Cache invalidated 2)
+    """What each channel measures, with units resolved from its own values. (Cache invalidated 3)
 
     Channels are passed as separate arrays rather than a shared DataFrame: they
     run to different lengths once each is forecast at its full extent - 4,453 to
