@@ -593,6 +593,9 @@ if mode == "Live replay":
                         key=f"replay_chart_{upto}")
 
     def replay_frame() -> None:
+        if n_steps == 0:
+            st.info("Not enough telemetry history to forecast (waiting for more data).")
+            return
         if st.session_state.replay_playing:
             st.session_state.replay_pos = min(n_steps,
                                               st.session_state.replay_pos + speed)

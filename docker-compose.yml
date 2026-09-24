@@ -10,7 +10,7 @@ services:
       # Persist models, telemetry data, and reports across restarts
       - ./prototype/models:/app/prototype/models
       - ./prototype/reports:/app/prototype/reports
-      - ./satnogs:/app/satnogs
+      - ./prototype/data:/app/prototype/data
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1

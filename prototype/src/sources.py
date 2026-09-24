@@ -121,9 +121,10 @@ def load_source(key: str):
     # from the directory that trained the model; fall back to the capture
     # directory, which is where every SatNOGS parquet lives regardless.
     from satnogs import SATNOGS_DIR
+    from pathlib import PureWindowsPath
     parquet = Path(meta["parquet"])
     if not parquet.exists():
-        parquet = SATNOGS_DIR / parquet.name
+        parquet = SATNOGS_DIR / PureWindowsPath(meta["parquet"]).name
     df = complete_frames(load_frames(parquet), channels)
     values = df[channels].to_numpy(dtype=np.float32)
     # A live frame carries no commanding block, so the command features are

@@ -250,7 +250,7 @@ def forecast_per_channel(nets, scalers, channels, bundle, batch=256,
     # Rows are offset by the largest window so every channel's row i refers to
     # the same reading index regardless of how much history its model needs.
     base = max(win.values())
-    n = max(lengths.values()) - base
+    n = max(0, max(lengths.values()) - base)
     t = np.arange(n) + base
     y_true = np.full((n, len(channels)), np.nan, dtype=np.float32)
     y_pred = np.full((n, len(channels)), np.nan, dtype=np.float32)

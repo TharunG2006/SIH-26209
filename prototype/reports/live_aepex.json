@@ -1,6 +1,6 @@
 {
   "satellite": "AEPEX",
-  "frames": 840,
+  "frames": 887,
   "channels": [
     "sw_adcs_body_quat1",
     "sw_adcs_body_quat2",
@@ -22,27 +22,19 @@
   "incidents": [
     {
       "start": 800,
-      "end": 812,
-      "severity": 172.88716014923932,
+      "end": 849,
+      "severity": 177.61301212984262,
       "timestamp": "2026-09-23T21:34:33Z",
-      "explanation": "Driven by sw_adcs_body_rt3: sw_adcs_body_rt3 (29%, below expected, 172.9\u03c3), sw_adcs_body_rt2 (29%, above expected, 172.2\u03c3), sw_adcs_body_rt1 (28%, above expected, 165.2\u03c3). Peak severity 172.9\u03c3 at t=806.",
+      "explanation": "Driven by sw_adcs_body_rt3: sw_adcs_body_rt3 (29%, below expected, 177.6\u03c3), sw_adcs_body_rt2 (29%, above expected, 176.7\u03c3), sw_adcs_body_rt1 (28%, above expected, 169.8\u03c3). Peak severity 177.6\u03c3 at t=806.",
       "propagation": "sw_adcs_body_rt1 deviated FIRST, then sw_adcs_body_rt3 +5 steps, sw_adcs_body_rt2 +5 steps, sw_adcs_wheel_sp3 +5 steps. The earliest channel is the likelier origin; the rest may be downstream effects."
     },
     {
-      "start": 328,
-      "end": 334,
-      "severity": 4.781107858813895,
-      "timestamp": "2026-09-21T03:36:29Z",
-      "explanation": "Driven by sw_adcs_body_quat3: sw_adcs_body_quat3 (36%, above expected, 4.8\u03c3), sw_adcs_analogs_motor3_temp (35%, above expected, 4.7\u03c3), sw_adcs_sun_vec2 (29%, above expected, 3.8\u03c3). Peak severity 4.8\u03c3 at t=329.",
-      "propagation": "sw_adcs_body_quat3 deviated FIRST, then sw_adcs_sun_vec2 +1 steps. The earliest channel is the likelier origin; the rest may be downstream effects."
-    },
-    {
-      "start": 248,
-      "end": 257,
-      "severity": 4.087363884334887,
-      "timestamp": "2026-09-19T18:36:45Z",
-      "explanation": "Driven by sw_adcs_sun_vec2: sw_adcs_sun_vec2 (100%, above expected, 4.1\u03c3). Peak severity 4.1\u03c3 at t=252.",
-      "propagation": "sw_adcs_sun_vec2 deviated alone - no propagation to other channels."
+      "start": 322,
+      "end": 333,
+      "severity": 4.427589303546138,
+      "timestamp": "2026-09-21T02:34:23Z",
+      "explanation": "Driven by sw_adcs_body_quat3: sw_adcs_body_quat3 (53%, above expected, 4.4\u03c3), sw_adcs_analogs_motor3_temp (47%, above expected, 4.0\u03c3). Peak severity 4.4\u03c3 at t=329.",
+      "propagation": "sw_adcs_analogs_motor3_temp deviated FIRST, then sw_adcs_body_quat3 +6 steps. The earliest channel is the likelier origin; the rest may be downstream effects."
     }
   ]
 }

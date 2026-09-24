@@ -1,0 +1,11 @@
+prototype/data/
+prototype/models/
+prototype/reports/
+satnogs/
+.git/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+*.pyc
+*.npz
+*.parquet

@@ -1,6 +1,6 @@
 {
   "satellite": "COSMO",
-  "frames": 519,
+  "frames": 590,
   "channels": [
     "bcn_adcs_bod_rt_3",
     "bcn_adcs_att_resid_1",
@@ -22,34 +22,34 @@
   "incidents": [
     {
       "start": 48,
-      "end": 62,
-      "severity": 10.66876635317882,
+      "end": 59,
+      "severity": 15.547077193540712,
       "timestamp": "2026-09-21T03:17:38Z",
-      "explanation": "Driven by bcn_adcs_rw_sp_3: bcn_adcs_rw_sp_3 (46%, below expected, 10.7\u03c3), bcn_adcs_rw_sp_2 (40%, above expected, 9.2\u03c3), bcn_adcs_rw_sp_1 (15%, below expected, 3.4\u03c3). Peak severity 10.7\u03c3 at t=51.",
-      "propagation": "bcn_adcs_rw_sp_3 and 2 other channel(s) deviated simultaneously - no lead/lag separation."
+      "explanation": "Driven by bcn_adcs_rw_sp_2: bcn_adcs_rw_sp_2 (47%, above expected, 15.5\u03c3), bcn_adcs_rw_sp_3 (39%, below expected, 12.8\u03c3), bcn_adcs_rw_sp_1 (14%, below expected, 4.7\u03c3). Peak severity 15.5\u03c3 at t=51.",
+      "propagation": "bcn_adcs_rw_sp_2 and 2 other channel(s) deviated simultaneously - no lead/lag separation."
     },
     {
-      "start": 376,
-      "end": 397,
-      "severity": 8.57528777657382,
-      "timestamp": "2026-09-22T19:56:35Z",
-      "explanation": "Driven by bcn_adcs_att_resid_2: bcn_adcs_att_resid_2 (38%, above expected, 8.6\u03c3), bcn_adcs_att_resid_3 (38%, above expected, 8.6\u03c3), bcn_adcs_att_resid_1 (25%, below expected, 5.6\u03c3). Peak severity 8.6\u03c3 at t=388.",
-      "propagation": "bcn_adcs_att_resid_1 deviated FIRST, then bcn_adcs_att_resid_2 +6 steps, bcn_adcs_att_resid_3 +6 steps. The earliest channel is the likelier origin; the rest may be downstream effects."
+      "start": 380,
+      "end": 398,
+      "severity": 13.090901202940792,
+      "timestamp": "2026-09-22T21:30:37Z",
+      "explanation": "Driven by bcn_adcs_att_resid_2: bcn_adcs_att_resid_2 (50%, above expected, 13.1\u03c3), bcn_adcs_att_resid_3 (50%, above expected, 13.1\u03c3). Peak severity 13.1\u03c3 at t=388.",
+      "propagation": "bcn_adcs_att_resid_2 and 1 other channel(s) deviated simultaneously - no lead/lag separation."
     },
     {
-      "start": 126,
-      "end": 193,
-      "severity": 7.20305285133673,
+      "start": 129,
+      "end": 192,
+      "severity": 9.735916306720812,
       "timestamp": "2026-09-21T12:51:39Z",
-      "explanation": "Driven by bcn_adcs_bod_rt_2: bcn_adcs_bod_rt_2 (31%, above expected, 7.2\u03c3), bcn_adcs_bod_rt_3 (29%, above expected, 6.7\u03c3), bcn_adcs_rw_sp_1 (15%, below expected, 3.6\u03c3). Peak severity 7.2\u03c3 at t=190.",
-      "propagation": "bcn_adcs_rw_sp_1 deviated FIRST, then bcn_adcs_bod_rt_1 +4 steps, bcn_sun_pt_err +27 steps, bcn_adcs_bod_rt_3 +46 steps. The earliest channel is the likelier origin; the rest may be downstream effects."
+      "explanation": "Driven by bcn_adcs_bod_rt_3: bcn_adcs_bod_rt_3 (34%, above expected, 9.7\u03c3), bcn_adcs_bod_rt_2 (31%, above expected, 8.7\u03c3), bcn_adcs_bod_rt_1 (18%, above expected, 5.2\u03c3). Peak severity 9.7\u03c3 at t=178.",
+      "propagation": "bcn_adcs_bod_rt_1 deviated FIRST, then bcn_adcs_bod_rt_3 +44 steps, bcn_adcs_bod_rt_2 +44 steps. The earliest channel is the likelier origin; the rest may be downstream effects."
     },
     {
       "start": 453,
       "end": 470,
-      "severity": 3.875674309110984,
+      "severity": 3.5446607438142377,
       "timestamp": "2026-09-24T00:28:09Z",
-      "explanation": "Driven by bcn_mag_vec_bod_2: bcn_mag_vec_bod_2 (100%, below expected, 3.9\u03c3). Peak severity 3.9\u03c3 at t=457.",
+      "explanation": "Driven by bcn_mag_vec_bod_2: bcn_mag_vec_bod_2 (100%, below expected, 3.5\u03c3). Peak severity 3.5\u03c3 at t=457.",
       "propagation": "bcn_mag_vec_bod_2 deviated alone - no propagation to other channels."
     }
   ]
