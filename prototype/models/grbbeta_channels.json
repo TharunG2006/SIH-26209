@@ -3,6 +3,7 @@
   "window": 32,
   "frames": 823,
   "train_frames": 493,
+  "parquet": "prototype/data/satnogs/GRBBeta_60237.parquet",
   "channels": {
     "psu_pv_in_volt3": {
       "val_mse": 0.19388142228126526
