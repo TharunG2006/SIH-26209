@@ -2,7 +2,7 @@
 
 [![TRL](https://img.shields.io/badge/TRL-5-success.svg)](https://en.wikipedia.org/wiki/Technology_readiness_level)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
+[![Podman](https://img.shields.io/badge/Podman-Ready-892CA0.svg)](https://podman.io/)
 
 Astrovia is an advanced, AI-driven predictive maintenance and anomaly detection system for satellite constellations. Built for the Smart India Hackathon (SIH 2026), this system moves beyond simple threshold alarms by utilizing deep learning to predict failures before they happen, while offering 100% explainability.
 
@@ -20,9 +20,9 @@ Astrovia is an advanced, AI-driven predictive maintenance and anomaly detection 
 2. **Backend Processing:** Python, Pandas, NumPy, and SciPy for feature extraction and RMT spectral analysis.
 3. **Frontend Dashboard:** Built in Streamlit for a highly responsive, mission-control aesthetic operator interface.
 4. **Data Layer:** SQLite for lightweight, reliable telemetry storage and anomaly logging.
-5. **Deployment:** Fully Dockerized for immediate deployment on AWS/GCP or local environments.
+5. **Deployment:** Fully containerized with Podman for immediate deployment on AWS/GCP or local environments.
 
-## ⚙️ Quick Start (Docker)
+## ⚙️ Quick Start (Podman)
 
 Astrovia is fully containerized for instant deployment without complex dependency management.
 
@@ -32,7 +32,7 @@ git clone https://github.com/TharunG2006/SIH-26209.git
 cd SIH-26209
 
 # 2. Build and run the containers
-docker-compose up --build -d
+podman-compose up --build -d
 
 # 3. Access the dashboard
 # Open your browser and navigate to: http://localhost:8501
