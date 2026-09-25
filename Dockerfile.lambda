@@ -1,0 +1,14 @@
+FROM public.ecr.aws/lambda/python:3.11
+
+# Install required packages
+COPY prototype/requirements.txt ${LAMBDA_TASK_ROOT}/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the core prototype codebase
+COPY prototype/ ${LAMBDA_TASK_ROOT}/prototype/
+
+# Copy the lambda handler
+COPY lambda_function.py ${LAMBDA_TASK_ROOT}/
+
+# Set the CMD to your handler
+CMD [ "lambda_function.handler" ]
