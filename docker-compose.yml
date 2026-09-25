@@ -14,3 +14,11 @@ services:
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
+      - S3_BUCKET=${S3_BUCKET:-sih-astrovia-data}
+      - RDS_HOST=${RDS_HOST:-localhost}
+      - RDS_DB=${RDS_DB:-postgres}
+      - RDS_USER=${RDS_USER:-postgres}
+      - RDS_PASSWORD=${RDS_PASSWORD:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-eu-north-1}

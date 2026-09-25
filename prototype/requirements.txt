@@ -8,3 +8,5 @@ streamlit>=1.28
 scikit-learn>=1.3
 satnogs-decoders>=1.120   # local decoding of live SatNOGS frames
 boto3>=1.28
+psycopg2-binary>=2.9.9
+s3fs>=2023.10.0

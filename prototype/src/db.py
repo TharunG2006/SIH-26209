@@ -1,53 +1,32 @@
-"""Persistence layer — the seven tables from docs/diagrams.html.
-
-The schema follows the submitted ER diagram exactly: Satellite, Channel,
-TelemetryReading, Anomaly, AnomalyContribution, Alert, Operator.
-
-AnomalyContribution is deliberately its own table rather than a column on
-Anomaly. One anomaly implicates several channels at once, each with its own
-deviation score and onset, and that row-level data is precisely what the
-explainability layer reads back. Flattening it into Anomaly would make the
-central feature of this project unrepresentable.
-
-SQLite is used so the prototype needs no server; the schema is ordinary SQL and
-moves to PostgreSQL unchanged apart from the AUTOINCREMENT spelling.
-"""
-from __future__ import annotations
-
-import sqlite3
+import os
 from contextlib import contextmanager
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from pathlib import Path
-
 from config import ROOT, SPACECRAFT, SUBSYSTEM
 
 DB_PATH = ROOT / "satellite_health.db"
 
 SCHEMA = """
-PRAGMA foreign_keys = ON;
-
 CREATE TABLE IF NOT EXISTS Satellite (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    id          SERIAL PRIMARY KEY,
     name        TEXT    NOT NULL UNIQUE,
     norad_id    INTEGER,
     launch_date TEXT
 );
 
 CREATE TABLE IF NOT EXISTS Channel (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    id           SERIAL PRIMARY KEY,
     satellite_id INTEGER NOT NULL REFERENCES Satellite(id) ON DELETE CASCADE,
     subsystem    TEXT,
     name         TEXT    NOT NULL,
-    -- NASA anonymises the telemanom channels, so the physical unit is genuinely
-    -- unknown and stays NULL rather than being guessed at.
     unit         TEXT,
     UNIQUE (satellite_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS TelemetryReading (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    id         SERIAL PRIMARY KEY,
     channel_id INTEGER NOT NULL REFERENCES Channel(id) ON DELETE CASCADE,
-    -- The benchmark ships no absolute clock, only a reading index, so timestep
-    -- is authoritative here and timestamp is filled only for live feeds.
     timestep   INTEGER NOT NULL,
     timestamp  TEXT,
     value      REAL    NOT NULL,
@@ -55,11 +34,9 @@ CREATE TABLE IF NOT EXISTS TelemetryReading (
 );
 
 CREATE TABLE IF NOT EXISTS Anomaly (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    id             SERIAL PRIMARY KEY,
     satellite_id   INTEGER NOT NULL REFERENCES Satellite(id) ON DELETE CASCADE,
-    detected_at    INTEGER NOT NULL,      -- timestep the incident opens
-    -- Wall-clock time, present only for live feeds: the NASA benchmark ships a
-    -- reading index and no clock at all.
+    detected_at    INTEGER NOT NULL,
     detected_utc   TEXT,
     ended_at       INTEGER,
     peak_at        INTEGER,
@@ -71,31 +48,31 @@ CREATE TABLE IF NOT EXISTS Anomaly (
 );
 
 CREATE TABLE IF NOT EXISTS AnomalyContribution (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    id              SERIAL PRIMARY KEY,
     anomaly_id      INTEGER NOT NULL REFERENCES Anomaly(id) ON DELETE CASCADE,
     channel_id      INTEGER NOT NULL REFERENCES Channel(id) ON DELETE CASCADE,
-    deviation_score REAL    NOT NULL,     -- robust z-score at this channel's peak
-    share_pct       REAL,                 -- percentage of the incident's deviation
-    onset           INTEGER,              -- timestep this channel began deviating
-    lag             INTEGER,              -- steps after the first affected channel
-    chain_rank      INTEGER,              -- 0 = moved first (likeliest origin)
+    deviation_score REAL    NOT NULL,
+    share_pct       REAL,
+    onset           INTEGER,
+    lag             INTEGER,
+    chain_rank      INTEGER,
     actual          REAL,
     predicted       REAL,
     UNIQUE (anomaly_id, channel_id)
 );
 
 CREATE TABLE IF NOT EXISTS Operator (
-    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    id   SERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     role TEXT
 );
 
 CREATE TABLE IF NOT EXISTS Alert (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    id              SERIAL PRIMARY KEY,
     anomaly_id      INTEGER NOT NULL REFERENCES Anomaly(id) ON DELETE CASCADE,
-    sent_at         TEXT    NOT NULL DEFAULT (datetime('now')),
+    sent_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     acknowledged_by INTEGER REFERENCES Operator(id),
-    acknowledged_at TEXT,
+    acknowledged_at TIMESTAMP,
     UNIQUE (anomaly_id)
 );
 
@@ -105,37 +82,61 @@ CREATE INDEX IF NOT EXISTS idx_contrib_channel ON AnomalyContribution(channel_id
 CREATE INDEX IF NOT EXISTS idx_anomaly_satellite ON Anomaly(satellite_id);
 """
 
+class SQLiteMockConnection:
+    def __init__(self):
+        host = os.environ.get('RDS_HOST', 'localhost')
+        db = os.environ.get('RDS_DB', 'postgres')
+        user = os.environ.get('RDS_USER', 'postgres')
+        password = os.environ.get('RDS_PASSWORD', '')
+        self.conn = psycopg2.connect(host=host, database=db, user=user, password=password)
+    
+    def execute(self, sql, params=None):
+        cur = self.conn.cursor(cursor_factory=RealDictCursor)
+        if params:
+            cur.execute(sql.replace('?', '%s'), params)
+        else:
+            cur.execute(sql)
+        return cur
+        
+    def executemany(self, sql, params_list):
+        cur = self.conn.cursor()
+        cur.executemany(sql.replace('?', '%s'), params_list)
+        return cur
+        
+    def executescript(self, sql):
+        cur = self.conn.cursor()
+        cur.execute(sql)
+        
+    def commit(self):
+        self.conn.commit()
+        
+    def close(self):
+        self.conn.close()
 
 @contextmanager
 def connect(path: Path | str = DB_PATH):
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = SQLiteMockConnection()
     try:
         yield conn
         conn.commit()
     finally:
         conn.close()
 
-
 def init_db(path: Path | str = DB_PATH) -> Path:
     with connect(path) as conn:
         conn.executescript(SCHEMA)
     return Path(path)
 
-
-# ---------------------------------------------------------------- writing ---
 def upsert_satellite(conn, name: str, norad_id: int | None = None,
                      launch_date: str | None = None) -> int:
     conn.execute(
         "INSERT INTO Satellite (name, norad_id, launch_date) VALUES (?, ?, ?) "
-        "ON CONFLICT(name) DO UPDATE SET norad_id = COALESCE(excluded.norad_id, norad_id), "
-        "launch_date = COALESCE(excluded.launch_date, launch_date)",
+        "ON CONFLICT(name) DO UPDATE SET norad_id = COALESCE(EXCLUDED.norad_id, Satellite.norad_id), "
+        "launch_date = COALESCE(EXCLUDED.launch_date, Satellite.launch_date)",
         (name, norad_id, launch_date),
     )
     return conn.execute("SELECT id FROM Satellite WHERE name = ?",
                         (name,)).fetchone()["id"]
-
 
 def upsert_channels(conn, satellite_id: int, channels: list[str]) -> dict[str, int]:
     rows = [(satellite_id, SUBSYSTEM.get(c.split("-")[0], c.split("-")[0]), c)
@@ -148,14 +149,8 @@ def upsert_channels(conn, satellite_id: int, channels: list[str]) -> dict[str, i
     return {r["name"]: r["id"] for r in conn.execute(
         "SELECT id, name FROM Channel WHERE satellite_id = ?", (satellite_id,))}
 
-
 def store_readings(conn, channel_ids: dict[str, int], series: dict[str, list],
                    batch: int = 20000, stamps=None) -> int:
-    """Persist raw telemetry. Optional: the detector reads parquet directly.
-
-    `stamps` supplies the UTC time of each reading when the source has one, so
-    a live capture fills `timestamp` while the benchmark leaves it NULL.
-    """
     total = 0
     for ch, values in series.items():
         cid = channel_ids[ch]
@@ -174,15 +169,8 @@ def store_readings(conn, channel_ids: dict[str, int], series: dict[str, list],
         total += len(rows)
     return total
 
-
 def store_anomalies(conn, satellite_id: int, channel_ids: dict[str, int],
                     anomalies, raise_alerts: bool = True, stamps=None) -> int:
-    """Write incidents plus their per-channel attribution.
-
-    Each Anomaly row is one operator-facing incident; its AnomalyContribution
-    rows carry the explanation - which channels, how much each contributed, and
-    when each began deviating.
-    """
     written = 0
     for a in anomalies:
         when = (str(stamps[min(a.start, len(stamps) - 1)])
@@ -201,7 +189,7 @@ def store_anomalies(conn, satellite_id: int, channel_ids: dict[str, int],
             ).fetchone()
             anomaly_id = row["id"]
         else:
-            anomaly_id = cur.lastrowid
+            anomaly_id = cur.execute("SELECT lastval() as id").fetchone()["id"]
             written += 1
 
         conn.executemany(
@@ -219,8 +207,6 @@ def store_anomalies(conn, satellite_id: int, channel_ids: dict[str, int],
                 "ON CONFLICT(anomaly_id) DO NOTHING", (anomaly_id,))
     return written
 
-
-# ---------------------------------------------------------------- reading ---
 EXPLAIN_SQL = """
 SELECT  a.id                AS anomaly_id,
         s.name              AS satellite,
@@ -238,17 +224,10 @@ WHERE       a.id = ?
 ORDER BY    ac.share_pct DESC
 """
 
-
-def explain(conn, anomaly_id: int) -> list[sqlite3.Row]:
-    """The explainability read: one anomaly, every channel that caused it.
-
-    This single join is the reason AnomalyContribution exists as a table.
-    """
+def explain(conn, anomaly_id: int):
     return conn.execute(EXPLAIN_SQL, (anomaly_id,)).fetchall()
 
-
-def causal_chain(conn, anomaly_id: int) -> list[sqlite3.Row]:
-    """Contributing channels ordered by onset - which moved first."""
+def causal_chain(conn, anomaly_id: int):
     return conn.execute(
         "SELECT c.name AS channel, c.subsystem, ac.onset, ac.lag, "
         "       ac.deviation_score, ac.chain_rank "
@@ -256,9 +235,7 @@ def causal_chain(conn, anomaly_id: int) -> list[sqlite3.Row]:
         "WHERE ac.anomaly_id = ? ORDER BY ac.chain_rank", (anomaly_id,)
     ).fetchall()
 
-
-def open_alerts(conn) -> list[sqlite3.Row]:
-    """Unacknowledged alerts, worst first — the operator's queue."""
+def open_alerts(conn):
     return conn.execute(
         "SELECT al.id AS alert_id, al.sent_at, a.id AS anomaly_id, "
         "       s.name AS satellite, a.detected_at, a.severity_score, "
@@ -276,31 +253,28 @@ def open_alerts(conn) -> list[sqlite3.Row]:
         "ORDER BY a.severity_score DESC"
     ).fetchall()
 
-
 def acknowledge(conn, alert_id: int, operator_name: str,
                 role: str | None = None) -> None:
-    """Record a real operator acknowledging an alert."""
     conn.execute("INSERT INTO Operator (name, role) VALUES (?, ?) "
                  "ON CONFLICT(name) DO NOTHING", (operator_name, role))
     op = conn.execute("SELECT id FROM Operator WHERE name = ?",
                       (operator_name,)).fetchone()["id"]
     conn.execute(
-        "UPDATE Alert SET acknowledged_by = ?, acknowledged_at = datetime('now') "
+        "UPDATE Alert SET acknowledged_by = ?, acknowledged_at = CURRENT_TIMESTAMP "
         "WHERE id = ?", (op, alert_id))
     conn.execute(
         "UPDATE Anomaly SET status = 'acknowledged' WHERE id = "
         "(SELECT anomaly_id FROM Alert WHERE id = ?)", (alert_id,))
 
-
 def summary(conn) -> dict:
     def one(sql):
-        return conn.execute(sql).fetchone()[0]
+        return conn.execute(sql).fetchone()['count']
     return {
-        "satellites": one("SELECT COUNT(*) FROM Satellite"),
-        "channels": one("SELECT COUNT(*) FROM Channel"),
-        "telemetry_readings": one("SELECT COUNT(*) FROM TelemetryReading"),
-        "anomalies": one("SELECT COUNT(*) FROM Anomaly"),
-        "contributions": one("SELECT COUNT(*) FROM AnomalyContribution"),
-        "alerts": one("SELECT COUNT(*) FROM Alert"),
-        "operators": one("SELECT COUNT(*) FROM Operator"),
+        "satellites": one("SELECT COUNT(*) as count FROM Satellite"),
+        "channels": one("SELECT COUNT(*) as count FROM Channel"),
+        "telemetry_readings": one("SELECT COUNT(*) as count FROM TelemetryReading"),
+        "anomalies": one("SELECT COUNT(*) as count FROM Anomaly"),
+        "contributions": one("SELECT COUNT(*) as count FROM AnomalyContribution"),
+        "alerts": one("SELECT COUNT(*) as count FROM Alert"),
+        "operators": one("SELECT COUNT(*) as count FROM Operator"),
     }

@@ -3,6 +3,7 @@
 import time
 import json
 import re
+import os
 import traceback
 from pathlib import Path
 import sys
@@ -38,8 +39,20 @@ def run_pipeline():
                 print(f"No new frames for {name}.")
                 continue
                 
-            # 2. Re-detect anomalies on the updated parquet
+            # 2. Upload to Amazon S3 Data Lake
             path = res["path"]
+            s3_bucket = os.environ.get("S3_BUCKET")
+            if s3_bucket:
+                print(f"Uploading telemetry to S3 Data Lake (s3://{s3_bucket}/telemetry/{path.name})...")
+                try:
+                    import boto3
+                    s3 = boto3.client('s3')
+                    s3.upload_file(str(path), s3_bucket, f"telemetry/{path.name}")
+                    print("S3 upload successful.")
+                except Exception as e:
+                    print(f"S3 upload skipped/failed: {e}")
+
+            # 3. Re-detect anomalies on the updated parquet
             df = load_frames(path)
             
             # The chosen block's channels that were previously trained
