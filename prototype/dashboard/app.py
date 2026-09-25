@@ -460,7 +460,8 @@ def explanation_panel(anom, key_prefix: str = "") -> None:
                 import json
                 with open("prototype/reports/early_warning.json", "r") as f:
                     ew_data = json.load(f)
-                lead_time = ew_data.get(spacecraft, {}).get("cusum", {}).get("median_lead", 400)
+                lead_val = ew_data.get(spacecraft, {}).get("cusum", {}).get("median_lead")
+                lead_time = 400 if lead_val is None else lead_val
             except:
                 lead_time = 400
                 
