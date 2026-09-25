@@ -471,26 +471,29 @@ def explanation_panel(anom, key_prefix: str = "") -> None:
                 try:
                     s = pd.to_datetime(stamps)
                     diffs = s.to_series().diff().dt.total_seconds()
-                    # Median delta ignores massive time gaps (e.g. satellite signal loss)
-                    dt_seconds = diffs.median()
+                    val = diffs.median()
+                    if pd.notna(val) and val > 0:
+                        dt_seconds = val
                 except Exception:
                     pass
             
-            if dt_seconds > 0:
-                seconds = int(lead_time * dt_seconds)
-                days = seconds // 86400
-                hours = (seconds % 86400) // 3600
-                minutes = (seconds % 3600) // 60
+            if dt_seconds is None or pd.isna(dt_seconds) or dt_seconds <= 0:
+                dt_seconds = 60
                 
-                parts = []
-                if days > 0:
-                    parts.append(f"{days} days")
-                if hours > 0:
-                    parts.append(f"{hours} hours")
-                if minutes > 0 or (days == 0 and hours == 0):
-                    parts.append(f"{minutes} minutes")
-                
-                time_str = f"**~{', '.join(parts)}** ({lead_time} timesteps)"
+            seconds = int(lead_time * dt_seconds)
+            days = seconds // 86400
+            hours = (seconds % 86400) // 3600
+            minutes = (seconds % 3600) // 60
+            
+            parts = []
+            if days > 0:
+                parts.append(f"{days} days")
+            if hours > 0:
+                parts.append(f"{hours} hours")
+            if minutes > 0 or (days == 0 and hours == 0):
+                parts.append(f"{minutes} minutes")
+            
+            time_str = f"**~{', '.join(parts)}** ({lead_time} timesteps)"
             
             st.warning(f"⏳ **Predictive Maintenance (Time-To-Failure):** Based on the CUSUM degradation rate, the AI predicts this sensor will suffer a critical failure in {time_str}. This provides actionable lead time to route power away from the subsystem.")
 
