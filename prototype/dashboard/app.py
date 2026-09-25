@@ -300,7 +300,7 @@ def explanation_panel(anom, key_prefix: str = "") -> None:
         unsafe_allow_html=True,
     )
     
-    if band == "CRITICAL" and st.session_state.get("aws_access"):
+    if st.session_state.get("aws_access"):
         if st.button("🚨 Dispatch SNS Alert", key=f"sns_{key_prefix}_{anom.start}"):
             import boto3
             try:
