@@ -153,6 +153,10 @@ else:
                               0.1, help="Higher = fewer, more confident alerts")
 min_run = st.sidebar.slider("Min. duration (timesteps)", 1, 20, MIN_RUN)
 
+with st.sidebar.expander("🚨 SNS Alerts (Demo)"):
+    st.session_state["aws_access"] = st.text_input("AWS Access Key", type="password")
+    st.session_state["aws_secret"] = st.text_input("AWS Secret Key", type="password")
+
 st.sidebar.divider()
 st.sidebar.subheader("Live Space Weather")
 sw = get_space_weather()
@@ -295,6 +299,24 @@ def explanation_panel(anom, key_prefix: str = "") -> None:
         f"<span style='font-size:0.95em'>{explanation}</span></div>",
         unsafe_allow_html=True,
     )
+    
+    if band == "CRITICAL" and st.session_state.get("aws_access"):
+        if st.button("🚨 Dispatch SNS Alert", key=f"sns_{key_prefix}_{anom.start}"):
+            import boto3
+            try:
+                sns = boto3.client('sns', region_name='eu-north-1',
+                                   aws_access_key_id=st.session_state["aws_access"],
+                                   aws_secret_access_key=st.session_state["aws_secret"])
+                msg = f"CRITICAL SATELLITE ANOMALY!\n\nDuration: {anom.duration} timesteps\nPeak Error: {anom.severity:.1f}x normal\n\nExplanation: {explanation}"
+                sns.publish(
+                    TopicArn="arn:aws:sns:eu-north-1:917246555979:AnomalyAlerts",
+                    Message=msg,
+                    Subject="CRITICAL: Spacecraft Anomaly Detected"
+                )
+                st.toast("Alert dispatched to operations team!", icon="📧")
+            except Exception as e:
+                st.error(f"SNS Error: {e}")
+                
     # A live capture has a real clock; the benchmark ships only reading indices.
     when = utc_for(stamps, anom.start)
     if when:
