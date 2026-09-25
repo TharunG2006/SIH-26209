@@ -443,7 +443,7 @@ def explanation_panel(anom, key_prefix: str = "") -> None:
             s_acc = np.zeros_like(z_err)
             acc = 0.0
             for i_z, v in enumerate(z_err):
-                acc = max(0.0, acc + v - 0.5)
+                acc = max(0.0, acc + abs(v) - 0.5)
                 s_acc[i_z] = acc
                 
             fig2 = go.Figure()
