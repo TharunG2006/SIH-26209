@@ -16,12 +16,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose the dashboard port
-EXPOSE 8501
+EXPOSE 7860
 
 # Create a startup script that runs the background pipeline and the UI simultaneously
 RUN echo '#!/bin/bash\n\
 python prototype/src/pipeline.py --interval 60 &\n\
-python -m streamlit run prototype/dashboard/app.py --server.port=8501 --server.address=0.0.0.0\n\
+python -m streamlit run prototype/dashboard/app.py --server.port="${PORT:-7860}" --server.address=0.0.0.0\n\
 ' > start.sh && chmod +x start.sh
 
 # Run the system

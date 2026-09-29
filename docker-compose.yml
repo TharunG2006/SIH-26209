@@ -5,7 +5,7 @@ services:
     build: .
     container_name: astrovia-mission-control
     ports:
-      - "8501:8501"
+      - "7860:7860"
     volumes:
       # Persist models, telemetry data, and reports across restarts
       - ./prototype/models:/app/prototype/models
