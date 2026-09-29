@@ -24,7 +24,7 @@ import subprocess
 def start_background_pipeline():
     print("Starting background pipeline thread...")
     thread = threading.Thread(
-        target=lambda: subprocess.run(["python", "prototype/src/pipeline.py", "--interval", "60"]),
+        target=lambda: subprocess.run([sys.executable, "prototype/src/pipeline.py", "--interval", "60"]),
         daemon=True
     )
     thread.start()
