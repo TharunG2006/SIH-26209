@@ -16,6 +16,22 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import threading
+import subprocess
+
+# --- BACKGROUND PIPELINE HACK FOR STREAMLIT CLOUD ---
+@st.cache_resource
+def start_background_pipeline():
+    print("Starting background pipeline thread...")
+    thread = threading.Thread(
+        target=lambda: subprocess.run(["python", "prototype/src/pipeline.py", "--interval", "60"]),
+        daemon=True
+    )
+    thread.start()
+    return thread
+
+# Start it globally for the server
+start_background_pipeline()
 
 SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:
